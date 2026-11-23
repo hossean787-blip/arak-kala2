@@ -1,0 +1,32 @@
+{% load static %}
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}اراک کالا{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'store/main.css' %}">
+  <script defer src="{% static 'store/main.js' %}"></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true"></span>اراک کالا</a>
+    <nav aria-label="ناوبری اصلی">
+      <a href="{% url 'catalog' %}">فروشگاه</a>
+      <a href="{% url 'cart' %}">سبد خرید</a>
+      <a href="{% url 'track' %}">پیگیری سفارش</a>
+      {% if user.is_authenticated %}
+        {% if user.customer %}<a href="{% url 'customer_orders' %}">حساب مشتری</a>
+        {% else %}<a href="{% url 'dashboard' %}">مدیریت</a>{% endif %}
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="nav-button">خروج</button></form>
+      {% else %}<a href="{% url 'customer_login' %}">ورود مشتری</a>{% endif %}
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+  {% for message in messages %}<p class="notice {{ message.tags }}" role="status">{{ message }}</p>{% endfor %}
+  {% block body %}{% endblock %}
+</main>
+</body>
+</html>

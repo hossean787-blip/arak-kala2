@@ -1,0 +1,15 @@
+{% extends 'store/base.html' %}
+{% block body %}
+<section class="panel narrow">
+  <h1>سفارش {{ order.pk }}</h1>
+  <p>{{ order.customer }} · <bdi>{{ order.phone }}</bdi></p>
+  <p>{{ order.address }}</p>
+  <p>وضعیت <strong>{{ order.get_status_display }}</strong></p>
+  <div class="table-wrap"><table><thead><tr><th>کالا</th><th>تعداد</th><th>جمع</th></tr></thead>
+  <tbody>{% for line in order.lines.all %}<tr><td>{{ line.name }}</td><td>{{ line.quantity }}</td><td>{{ line.total }} ریال</td></tr>{% endfor %}</tbody></table></div>
+  <p class="price">جمع {{ order.total }} <small>ریال</small></p>
+  {% if choices %}<form method="post" class="inline-form">{% csrf_token %}
+    <label>وضعیت تازه<select name="status" required><option value="">انتخاب</option>{% for value, label in choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label><button>ذخیره وضعیت</button>
+  </form>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">اراک کالا</string>
+    <string name="store_url" translatable="false"></string>
+    <string name="setup_title">اتصال فروشگاه فعال نشده</string>
+    <string name="setup_description">با فعال‌سازی سامانهٔ اختصاصی اراک کالا، بخش فروشگاه و ورود مدیر در دسترس قرار می‌گیرد.</string>
+    <string name="connection_title">ارتباط با فروشگاه برقرار نشد</string>
+    <string name="connection_description">اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.</string>
+    <string name="retry">تلاش دوباره</string>
+    <string name="choose_file_failed">انتخاب فایل در دسترس نیست.</string>
+    <string name="save_file_failed">فایل ذخیره نشد.</string>
+    <string name="save_file_success">فایل ذخیره شد.</string>
+</resources>

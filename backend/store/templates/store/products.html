@@ -1,0 +1,13 @@
+{% extends 'store/base.html' %}
+{% block body %}
+<div class="heading"><h1>کالا و موجودی</h1><a class="button" href="{% url 'product_new' %}">کالای جدید</a></div>
+<form class="panel filter"><label>جست‌وجو<input name="q" value="{{ q }}" placeholder="نام، کد یا بارکد"></label><button>نمایش</button></form>
+<div class="panel table-wrap"><table>
+<thead><tr><th>کالا</th><th>کد</th><th>قیمت به ریال</th><th>موجودی</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+<tbody>{% for product in page %}
+  <tr><td>{{ product.name }}</td><td>{{ product.sku }}</td><td>{{ product.actual_price }}</td><td>{{ product.stock }}</td><td>{{ product.active|yesno:'فعال,غیرفعال' }}</td>
+  <td><a href="{% url 'product_edit' product.pk %}">ویرایش</a> · <a href="{% url 'add_stock' product.pk %}">ورود موجودی</a></td></tr>
+{% empty %}<tr><td colspan="6">کالایی پیدا نشد.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% include 'store/pagination.html' %}
+{% endblock %}

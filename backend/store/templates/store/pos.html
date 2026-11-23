@@ -1,0 +1,12 @@
+{% extends 'store/base.html' %}
+{% block body %}
+<section class="panel narrow">
+  <h1>ثبت فروش حضوری</h1>
+  <form method="post" class="form-stack">
+    {% csrf_token %}{{ form.as_div }}{{ lines.management_form }}{{ lines.non_form_errors }}
+    <div id="sale-lines">{% for line in lines %}<div class="line-row">{{ line.as_div }}</div>{% endfor %}</div>
+    <template id="empty-line"><div class="line-row">{{ lines.empty_form.as_div }}</div></template>
+    <div class="actions"><button class="light" id="add-line" type="button">افزودن ردیف</button><button>ثبت و نمایش رسید</button></div>
+  </form>
+</section>
+{% endblock %}

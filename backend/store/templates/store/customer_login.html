@@ -1,0 +1,13 @@
+{% extends 'store/base.html' %}
+{% block title %}ورود مشتری | اراک کالا{% endblock %}
+{% block body %}
+<section class="panel narrow">
+  <h1>ورود مشتری</h1>
+  <form method="post" class="form-stack">
+    {% csrf_token %}{{ form.as_div }}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <button>ورود</button>
+  </form>
+  <div class="actions"><a href="{% url 'customer_register' %}">ثبت‌نام مشتری</a></div>
+</section>
+{% endblock %}

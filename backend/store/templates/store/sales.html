@@ -1,0 +1,9 @@
+{% extends 'store/base.html' %}
+{% block body %}
+<div class="heading"><h1>گزارش فروش حضوری</h1><a class="button" href="{% url 'pos' %}">ثبت فروش</a></div>
+<form class="panel filter"><label>تاریخ میلادی<input name="date" type="date" value="{{ date }}"></label><button>نمایش</button><span>جمع فروش {{ total }} ریال</span></form>
+<div class="panel table-wrap"><table><thead><tr><th>رسید</th><th>خریدار</th><th>تاریخ</th><th>جمع به ریال</th></tr></thead>
+<tbody>{% for sale in page %}<tr><td><a href="{% url 'receipt' sale.pk %}">{{ sale.pk }}</a></td><td>{{ sale.customer|default:'—' }}</td><td>{{ sale.created_at|date:'Y/m/d H:i' }}</td><td>{{ sale.total }}</td></tr>
+{% empty %}<tr><td colspan="4">فروشی ثبت نشده است.</td></tr>{% endfor %}</tbody></table></div>
+{% include 'store/pagination.html' %}
+{% endblock %}

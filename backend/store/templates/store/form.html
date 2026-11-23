@@ -1,0 +1,11 @@
+{% extends 'store/base.html' %}
+{% block title %}{{ title }} | اراک کالا{% endblock %}
+{% block body %}
+<section class="panel narrow">
+  <h1>{{ title }}</h1>
+  <form method="post" class="form-stack">
+    {% csrf_token %}{{ form.as_div }}
+    <button>{{ submit|default:'ذخیره' }}</button>
+  </form>
+</section>
+{% endblock %}

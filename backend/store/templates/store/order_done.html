@@ -1,0 +1,9 @@
+{% extends 'store/base.html' %}
+{% block body %}
+<section class="panel narrow">
+  <h1>سفارش ثبت شد</h1>
+  <p>کد زیر را برای پیگیری سفارش نگه دارید.</p>
+  <p class="tracking-code" dir="ltr">{{ code }}</p>
+  <a class="button" href="{% url 'track' %}">پیگیری سفارش</a>
+</section>
+{% endblock %}

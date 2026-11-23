@@ -1,0 +1,16 @@
+{% extends 'store/base.html' %}
+{% block body %}
+<section class="hero">
+  <div>
+    <h1>اراک کالا</h1>
+    <p>محصولات فروشگاه را ببینید، سفارش ثبت کنید و وضعیت آن را پیگیری کنید.</p>
+    <div class="actions"><a class="button highlight" href="{% url 'catalog' %}">مشاهدهٔ محصولات</a>
+      <a class="button outline-light" href="{% url 'track' %}">پیگیری سفارش</a></div>
+  </div>
+  <div class="hero-mark" aria-hidden="true"><span class="brand-mark"></span></div>
+</section>
+<section class="grid entry-grid" aria-label="دسترسی کارکنان">
+  <a class="panel entry" href="{% url 'pos' %}"><strong>نرم‌افزار فروشگاهی</strong><span>ثبت فروش حضوری و چاپ رسید</span></a>
+  <a class="panel entry" href="{% url 'login' %}"><strong>ورود مدیر فروشگاه</strong><span>مدیریت کالاها، موجودی و سفارش‌ها</span></a>
+</section>
+{% endblock %}

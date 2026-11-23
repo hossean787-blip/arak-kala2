@@ -1,0 +1,11 @@
+{% extends 'store/base.html' %}
+{% block title %}مدیریت | اراک کالا{% endblock %}
+{% block body %}
+<h1>مدیریت فروشگاه</h1>
+<div class="grid">
+  <a class="panel metric" href="{% url 'products' %}"><span>کالای فعال</span><strong>{{ active_count }}</strong></a>
+  <a class="panel metric" href="{% url 'orders' %}"><span>سفارش در جریان</span><strong>{{ open_orders }}</strong></a>
+  <a class="panel metric" href="{% url 'sale_list' %}"><span>فروش حضوری امروز</span><strong>{{ today_sales }} فاکتور</strong><span>{{ today_total }} ریال</span></a>
+</div>
+<div class="actions"><a class="button" href="{% url 'pos' %}">ثبت فروش حضوری</a><a class="button light" href="{% url 'product_new' %}">افزودن کالا</a></div>
+{% endblock %}

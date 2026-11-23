@@ -1,0 +1,28 @@
+{
+  "python_syntax": {
+    "checked_files": 17,
+    "passed": true,
+    "errors": []
+  },
+  "archive_crc": {
+    "Arak-Kala-Web-Prototype.zip": true,
+    "DetaShop-Editable.zip": true,
+    "Arak-Kala-Source-v1.1.0.zip": true,
+    "Deta-APK-Native-Code.zip": true
+  },
+  "java_endpoint_compile": true,
+  "django_integration_tests": {
+    "passed": false,
+    "executed": false,
+    "blocker": "Django unavailable; pip network DNS failure"
+  },
+  "android_full_build": {
+    "passed": false,
+    "executed": false,
+    "blocker": "Android SDK build tools not verified in this environment"
+  },
+  "live_deployment_tests": {
+    "passed": false,
+    "executed": false
+  }
+}

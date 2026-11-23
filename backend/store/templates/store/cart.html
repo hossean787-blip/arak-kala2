@@ -1,0 +1,20 @@
+{% extends 'store/base.html' %}
+{% block title %}سبد خرید | اراک کالا{% endblock %}
+{% block body %}
+<h1>سبد خرید</h1>
+{% if rows %}
+<div class="panel">
+  {% for product, quantity, line_total in rows %}
+  <div class="cart-row"><div><strong>{{ product.name }}</strong><span>{{ line_total }} ریال{% if not product.active %} · خارج از فروش{% elif quantity > product.stock %} · موجودی کافی نیست{% endif %}</span></div>
+    <form class="inline-form" method="post" action="{% url 'change_cart' %}">
+      {% csrf_token %}<input type="hidden" name="product" value="{{ product.pk }}">
+      <label>تعداد<input type="number" name="quantity" value="{{ quantity }}" min="0" max="1000" required></label>
+      <button class="light">به‌روزرسانی</button><button class="light" name="quantity" value="0" formaction="{% url 'change_cart' %}" formnovalidate>حذف</button>
+    </form>
+  </div>
+  {% endfor %}
+  <p class="price">جمع سبد {{ total }} <small>ریال</small></p>
+  {% if can_order %}<a class="button" href="{% url 'checkout' %}">ادامهٔ ثبت سفارش</a>{% endif %}
+</div>
+{% else %}<div class="panel"><p>سبد خرید خالی است.</p><a class="button light" href="{% url 'catalog' %}">مشاهدهٔ محصولات</a></div>{% endif %}
+{% endblock %}

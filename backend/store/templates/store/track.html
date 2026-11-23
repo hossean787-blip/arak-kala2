@@ -1,0 +1,10 @@
+{% extends 'store/base.html' %}
+{% block body %}
+<section class="panel narrow">
+  <h1>پیگیری سفارش</h1>
+  <form method="post" class="form-stack">
+    {% csrf_token %}{{ form.as_div }}<button>نمایش وضعیت</button>
+  </form>
+  {% if order %}<p class="notice">وضعیت سفارش <strong>{{ order.get_status_display }}</strong></p>{% endif %}
+</section>
+{% endblock %}

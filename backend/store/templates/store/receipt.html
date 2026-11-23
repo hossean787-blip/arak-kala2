@@ -1,0 +1,10 @@
+{% extends 'store/base.html' %}
+{% block body %}
+<section class="panel narrow receipt">
+  <div class="heading"><h1>رسید فروش {{ sale.pk }}</h1><button class="light no-print" type="button" data-print>چاپ رسید</button></div>
+  <p>{{ sale.created_at|date:'Y/m/d H:i' }}{% if sale.customer %} · {{ sale.customer }}{% endif %}</p>
+  <div class="table-wrap"><table><thead><tr><th>کالا</th><th>تعداد</th><th>بهای واحد</th><th>جمع</th></tr></thead>
+  <tbody>{% for line in sale.lines.all %}<tr><td>{{ line.name }}</td><td>{{ line.quantity }}</td><td>{{ line.unit_price }}</td><td>{{ line.total }}</td></tr>{% endfor %}</tbody></table></div>
+  <p class="price">جمع {{ sale.total }} <small>ریال</small></p>
+</section>
+{% endblock %}

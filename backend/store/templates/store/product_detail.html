@@ -1,0 +1,18 @@
+{% extends 'store/base.html' %}
+{% block title %}{{ product.name }} | اراک کالا{% endblock %}
+{% block body %}
+<section class="panel narrow">
+  <p class="eyebrow">{{ product.category }}</p>
+  <h1>{{ product.name }}</h1>
+  {% if product.description %}<p>{{ product.description|linebreaksbr }}</p>{% endif %}
+  {% if product.discount_price != None %}<del>{{ product.price }} ریال</del>{% endif %}
+  <p class="price">{{ product.actual_price }} <small>ریال</small></p>
+  {% if product.stock %}
+  <form method="post" action="{% url 'change_cart' %}" class="inline-form">
+    {% csrf_token %}<input type="hidden" name="product" value="{{ product.pk }}">
+    <label>تعداد<input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}" required></label>
+    <button>افزودن به سبد</button>
+  </form>
+  {% else %}<p class="muted">ناموجود</p>{% endif %}
+</section>
+{% endblock %}
