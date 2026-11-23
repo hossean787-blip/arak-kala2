@@ -37,6 +37,22 @@ class CustomerLogin(LoginView):
         return reverse("customer_orders")
 
 
+@transaction.atomic
+def create_customer(details):
+    account = get_user_model().objects.create_user(
+        username=f"customer_{details['phone']}", password=details["password"]
+    )
+    Customer.objects.create(account=account, name=details["name"],
+                            phone=details["phone"], alias=details["alias"])
+    return account
+
+
+def is_manager(user):
+    return (user.is_authenticated and user.is_active
+            and user.get_username().lower() == settings.STORE_MANAGER_EMAIL
+            and user.email.lower() == settings.STORE_MANAGER_EMAIL)
+
+
 @never_cache
 def customer_register(request):
     if request.user.is_authenticated:
@@ -45,12 +61,7 @@ def customer_register(request):
     if request.method == "POST" and form.is_valid():
         details = form.cleaned_data
         try:
-            with transaction.atomic():
-                account = get_user_model().objects.create_user(
-                    username=f"customer_{details['phone']}", password=details["password"]
-                )
-                Customer.objects.create(account=account, name=details["name"],
-                                        phone=details["phone"], alias=details["alias"])
+            account = create_customer(details)
         except IntegrityError:
             form.add_error(None, "با این شماره یا نام کاربری امکان ثبت‌نام نیست.")
         else:
@@ -76,9 +87,7 @@ def manager_only(view):
     def guarded(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect_to_login(request.get_full_path())
-        if (not request.user.is_active
-                or request.user.get_username().lower() != settings.STORE_MANAGER_EMAIL
-                or request.user.email.lower() != settings.STORE_MANAGER_EMAIL):
+        if not is_manager(request.user):
             raise PermissionDenied
         return view(request, *args, **kwargs)
 
@@ -231,7 +240,10 @@ def product_edit(request, pk=None):
     form = ProductForm(request.POST if request.method == "POST" else None, instance=product)
     if request.method == "POST" and form.is_valid():
         try:
-            form.save()
+            if pk is None:
+                form.save()
+            else:
+                form.save(commit=False).save(update_fields=ProductForm.Meta.fields)
         except IntegrityError:
             form.add_error(None, "این کد کالا یا بارکد قبلاً ثبت شده است.")
         else:

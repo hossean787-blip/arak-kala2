@@ -1,0 +1,164 @@
+'use strict';
+const $ = (s) => document.querySelector(s);
+const state = { products:[], cart:[], catalogLoaded:false, user:null, category:'', search:'' };
+const fa = (n) => Number(n||0).toLocaleString('fa-IR');
+const rial = (n) => `${fa(n)} ریال`;
+const escapeHtml = (s) => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toastTimeout;
+function toast(message){ const t=$('#toast');t.textContent=message;t.hidden=false;clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>t.hidden=true,3400); }
+async function api(path, options={}) {
+  const {body, ...other}=options;
+  const headers = {'Content-Type': 'application/json'};
+  if (other.method && other.method !== 'GET') {
+    headers['X-CSRFToken'] = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)?.[1] || '';
+  }
+  let response;
+  try{response=await fetch(`/api${path}`,{...other,headers,body:body==null?undefined:JSON.stringify(body)});}catch{throw new Error('اتصال به سرور برقرار نشد')}
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||'خطای غیرمنتظره');
+  return data;
+}
+function loadCart(){try{state.cart=JSON.parse(localStorage.getItem('arak_cart')||'[]');if (!Array.isArray(state.cart)) state.cart = [];
+  state.cart = state.cart.filter(i => Number.isSafeInteger(i?.id) && i.id > 0
+    && Number.isInteger(i.quantity) && i.quantity > 0 && i.quantity <= 1000).slice(0, 50);}catch{state.cart=[]}}
+function saveCart(){localStorage.setItem('arak_cart',JSON.stringify(state.cart));renderCartCount()}
+function renderCartCount(){$('#cartCount').textContent=fa(state.cart.reduce((s,x)=>s+x.quantity,0))}
+async function loadProducts(){try{
+   const d=await api('/products');state.products=d.products;state.catalogLoaded=true;renderCategories();renderProducts();
+ }catch(e){toast(e.message);$('#emptyTitle').textContent='بارگذاری محصولات امکان‌پذیر نیست';$('#emptyText').textContent='ارتباط با سرور را بررسی کنید.';$('#emptyState').hidden=false;}}
+function renderCategories(){
+  const cats=[...new Set(state.products.map(p=>p.category).filter(Boolean))];
+  if (!cats.includes(state.category)) state.category = '';
+  const root=$('#categories');root.innerHTML='<button type="button" class="chip active" data-cat="">همه محصولات</button>'+
+    cats.map(c=>`<button type="button" class="chip" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('');
+  root.querySelectorAll('[data-cat]').forEach(btn => btn.classList.toggle('active', btn.dataset.cat === state.category));
+  root.querySelectorAll('[data-cat]').forEach(btn=>btn.addEventListener('click',()=>{state.category=btn.dataset.cat;root.querySelectorAll('.chip').forEach(n=>n.classList.toggle('active',n===btn));renderProducts();}));
+}
+function picture(p,cl=''){return p.images?.length?`<img class="${cl}" src="${escapeHtml(p.images[0])}" alt="${escapeHtml(p.name)}" loading="lazy">`:`<div class="product-placeholder" aria-hidden="true">AK.</div>`}
+function renderProducts(){
+ const q=state.search.trim().toLocaleLowerCase('fa');
+ const ps=state.products.filter(p=>(!state.category||state.category===p.category)&&(!q||p.name.toLocaleLowerCase('fa').includes(q)||p.description.toLocaleLowerCase('fa').includes(q)));
+ $('#productGrid').innerHTML=ps.map(p=>`<article class="product-card"><div class="product-photo">${picture(p)}<button aria-label="نمایش ${escapeHtml(p.name)}" data-product="${p.id}">↗</button></div><div class="product-meta"><div class="product-category">${escapeHtml(p.category)}</div><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">${rial(p.price)}</div>${!p.stock?'<span class="out-of-stock">ناموجود</span>':''}</div></article>`).join('');
+ $('#emptyTitle').textContent=state.products.length?'محصولی با این مشخصات پیدا نشد':'هنوز محصولی ثبت نشده';
+ $('#emptyText').textContent=state.products.length?'جست‌وجو یا دسته‌بندی را تغییر دهید.':'پس از اضافه‌شدن محصولات، اینجا نمایش داده می‌شوند.';
+ $('#emptyState').hidden=ps.length>0;
+ $('#productGrid').querySelectorAll('[data-product]').forEach(btn=>btn.addEventListener('click',()=>viewProduct(Number(btn.dataset.product))));
+}
+function openOverlay(type){$('#overlay').hidden=false;const node=type==='drawer'?$('#drawer'):$('#modal');node.hidden=false;document.body.style.overflow='hidden'}
+function closeOverlay(){$('#overlay').hidden=true;$('#drawer').hidden=true;$('#modal').hidden=true;document.body.style.overflow=''}
+function cartTotal(){return state.cart.reduce((s,i)=>{const p=state.products.find(p=>p.id===i.id);return s+(p?p.price*i.quantity:0)},0)}
+function renderCart(){
+  const node=$('#cartItems');
+  if (!state.catalogLoaded) {
+    node.textContent = 'برای مشاهده سبد، ابتدا محصولات باید بارگذاری شوند.';
+    $('#checkoutBtn').disabled = true;
+    return;
+  }
+  const filtered=state.cart.filter(i=>state.products.some(p=>p.id===i.id));
+  if(filtered.length!==state.cart.length){state.cart=filtered;saveCart()}
+  node.innerHTML=state.cart.length?state.cart.map(i=>{const p=state.products.find(p=>p.id===i.id);return `<div class="cart-item"><div class="cart-thumb" style="display:grid;place-items:center">${picture(p,'cart-thumb')}</div><div><h4>${escapeHtml(p.name)}</h4><p>${rial(p.price)}</p><div class="qty-control"><button data-qty="${p.id}" data-delta="1">+</button><span>${fa(i.quantity)}</span><button data-qty="${p.id}" data-delta="-1">−</button></div></div></div>`}).join(''):'<div class="cart-empty">سبد خریدت فعلاً خالیه ♡</div>';
+  $('#cartTotal').textContent=rial(cartTotal());$('#checkoutBtn').disabled=!state.cart.length;
+  node.querySelectorAll('[data-qty]').forEach(b=>b.addEventListener('click',()=>changeQty(Number(b.dataset.qty),Number(b.dataset.delta))));
+}
+function changeQty(id,delta){let item=state.cart.find(x=>x.id===id);if(!item)return;const p=state.products.find(x=>x.id===id);item.quantity=Math.min(p.stock,1000,item.quantity+delta);if(item.quantity<1)state.cart=state.cart.filter(x=>x.id!==id);saveCart();renderCart()}
+function addToCart(id){const p=state.products.find(x=>x.id===id);if(!p||p.stock<1)return toast('این محصول فعلاً موجود نیست');const item=state.cart.find(x=>x.id===id);if(item){if(item.quantity>=Math.min(1000,p.stock))return toast('موجودی بیشتری ثبت نشده');item.quantity++}else { if (state.cart.length >= 50) return toast('حداکثر ۵۰ نوع کالا در هر سفارش'); state.cart.push({id,quantity:1}); }saveCart();closeOverlay();toast('محصول به سبد خرید اضافه شد')}
+function viewProduct(id){const p=state.products.find(x=>x.id===id);if(!p)return;
+ $('#modalContent').innerHTML=`${p.images?.length?`<img class="modal-image" src="${escapeHtml(p.images[0])}" alt="${escapeHtml(p.name)}">`:`<div class="modal-image" style="display:grid;place-items:center;font:900 90px Arial;color:#ccc">AK.</div>`}<span class="label-sup">${escapeHtml(p.category)}</span><h2 id="modalTitle">${escapeHtml(p.name)}</h2><p>${escapeHtml(p.description||'')}</p><div class="totals"><b>${rial(p.price)}</b><span>${p.stock?`${fa(p.stock)} عدد موجود`:'ناموجود'}</span></div><button id="addProductBtn" class="btn btn-dark full" ${!p.stock?'disabled':''}>افزودن به سبد خرید +</button>`;
+ $('#addProductBtn').addEventListener('click',()=>addToCart(id));openOverlay('modal')}
+function formField(label,name,type='text',extra=''){return `<div class="field"><label for="f_${name}">${label}</label><input id="f_${name}" name="${name}" type="${type}" ${extra} required></div>`}
+function authModal(mode = 'login') {
+  const register = mode === 'register';
+  const identity = register
+    ? formField('نام و نام خانوادگی', 'name') + formField('شماره موبایل', 'phone', 'tel', 'maxlength="11" autocomplete="tel"')
+    : formField('موبایل یا نام کاربری', 'username', 'text', 'autocomplete="username"');
+  $('#modalContent').innerHTML = `<h2 id="modalTitle">${register ? 'ایجاد حساب کاربری' : 'ورود به حساب'}</h2>
+    <form id="authForm">${identity}${formField(register ? 'رمز عبور (حداقل ۱۲ نویسه)' : 'رمز عبور',
+      'password', 'password', register ? 'minlength="12" autocomplete="new-password"' : 'autocomplete="current-password"')}
+    <button class="btn btn-dark full" type="submit">${register ? 'ثبت‌نام' : 'ورود'}</button></form>
+    <p class="form-help"><button class="text-button" id="switchAuth">${register ? 'ورود به حساب موجود' : 'ایجاد حساب جدید'}</button></p>`;
+  $('#switchAuth').onclick = () => authModal(register ? 'login' : 'register');
+  $('#authForm').onsubmit = async event => {
+    event.preventDefault();
+    const button = event.submitter;
+    button.disabled = true;
+    try {
+      const body = Object.fromEntries(new FormData(event.currentTarget));
+      const result = await api(register ? '/auth/register' : '/auth/login', {method: 'POST', body});
+      state.user = result.user;
+      closeOverlay();
+      toast(register ? 'حساب کاربری ایجاد شد' : 'خوش اومدی ' + state.user.full_name);
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  };
+  openOverlay('modal');
+}
+
+function accountModal() {
+  if (!state.user) return authModal();
+  $('#modalContent').innerHTML = `<h2 id="modalTitle">${escapeHtml(state.user.full_name)}</h2>
+    <p>${escapeHtml(state.user.phone)}</p><button class="btn btn-dark full" id="accountOrders">سفارش‌های من</button>
+    <button class="text-button" id="logout">خروج از حساب</button>`;
+  $('#accountOrders').onclick = ordersModal;
+  $('#logout').onclick = async () => {
+    try {
+      await api('/auth/logout', {method: 'POST'});
+      state.user = null;
+      closeOverlay();
+      toast('از حساب خارج شدی');
+    } catch (error) {
+      toast(error.message);
+    }
+  };
+  openOverlay('modal');
+}
+
+async function ordersModal(){if(!state.user)return authModal();try{const d=await api('/orders');$('#modalContent').innerHTML=`<span class="label-sup">YOUR ORDERS</span><h2 id="modalTitle">سفارش‌های من</h2>${d.orders.length?d.orders.map(o=>`<div class="order-row"><strong>سفارش #${fa(o.id)} · ${rial(o.total)}</strong><span>وضعیت: ${escapeHtml(o.status_label)} · ${new Date(o.created_at*1000).toLocaleDateString('fa-IR')}</span><span>کد رهگیری <bdi>${escapeHtml(o.code)}</bdi></span></div>`).join(''):'<p>هنوز سفارشی ثبت نکردی.</p>'}`;openOverlay('modal')}catch(e){toast(e.message)}}
+function checkoutModal(){if(!state.cart.length)return;if(!state.user)return authModal();closeOverlay();$('#modalContent').innerHTML=`<span class="label-sup">CHECKOUT</span><h2 id="modalTitle">ثبت سفارش آزمایشی</h2><p>این نسخه هنوز پرداخت آنلاین و ارسال واقعی ندارد. سفارش صرفاً در سیستم ثبت می‌شود.</p><form id="checkoutForm">${formField('نام گیرنده','full_name','text','minlength="2"')}${formField('موبایل','phone','tel','minlength="8"')}<div class="field"><label for="address">نشانی کامل</label><textarea id="address" name="address" required minlength="8"></textarea></div><div class="totals"><span>مبلغ سفارش</span><b>${rial(cartTotal())}</b></div><button class="btn btn-dark full" type="submit">ثبت سفارش بدون پرداخت ↖</button></form>`;
+ $('#f_full_name').value = state.user.full_name;
+ $('#f_phone').value = state.user.phone;
+ let previousPayload = '';
+ let token;
+ $('#checkoutForm').onsubmit = async event => {
+   event.preventDefault();
+   const button = event.submitter;
+   button.disabled = true;
+   const form = Object.fromEntries(new FormData(event.currentTarget));
+   const items = state.cart.map(i => ({product_id: i.id, quantity: i.quantity}));
+   const currentPayload = JSON.stringify({...form, items});
+   try {
+     if (currentPayload !== previousPayload) {
+       token = crypto.randomUUID();
+       previousPayload = currentPayload;
+     }
+     const result = await api('/orders', {method: 'POST', body: {...form, items, token}});
+     state.cart = [];
+     saveCart();
+     await loadProducts();
+     closeOverlay();
+     toast(`سفارش آزمایشی شماره ${fa(result.order_id)} ثبت شد`);
+   } catch (error) {
+     toast(error.message);
+   } finally {
+     button.disabled = false;
+   }
+ };
+ openOverlay('modal');
+}
+
+async function init() {
+  loadCart();
+  renderCartCount();
+  await Promise.all([loadProducts(), api('/me').then(user => { state.user = user; }).catch(() => {})]);
+}
+$('#searchInput').addEventListener('input',e=>{state.search=e.target.value;renderProducts()});
+['cartBtn','mobileCartBtn'].forEach(id=>$('#'+id).addEventListener('click',()=>{renderCart();openOverlay('drawer')}));
+['accountBtn','mobileAccountBtn'].forEach(id=>$('#'+id).addEventListener('click',accountModal));
+['ordersBtn','mobileOrdersBtn'].forEach(id=>$('#'+id).addEventListener('click',ordersModal));
+$('#checkoutBtn').addEventListener('click',checkoutModal);
+$('#overlay').addEventListener('click',closeOverlay);
+document.querySelectorAll('[data-close]').forEach(x=>x.addEventListener('click',closeOverlay));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeOverlay()});
+init();

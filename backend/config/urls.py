@@ -1,9 +1,28 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib.auth.views import LogoutView
 from django.urls import path
-from store import views
+from store import api, views
 
 urlpatterns = [
-    path("", views.home, name="home"),
+    path("", api.storefront, name="home"),
+    path("shop/home/", views.home, name="classic_home"),
+    path("api/health", api.health),
+    path("api/products", api.public_products),
+    path("api/products/<int:pk>", api.public_products),
+    path("api/auth/register", api.customer_register),
+    path("api/auth/login", api.customer_login),
+    path("api/auth/logout", api.customer_logout),
+    path("api/me", api.current_customer),
+    path("api/orders", api.customer_orders),
+    path("api/admin/session", api.manager_login),
+    path("api/admin/logout", api.manager_logout),
+    path("api/admin/products", api.manager_products),
+    path("api/admin/products/<int:pk>", api.manager_products),
+    path("api/admin/images", api.manager_image),
+    path("api/admin/orders", api.manager_orders),
+    path("api/admin/orders/<int:pk>/status", api.manager_order_status),
+    path("api/admin/stats", api.manager_stats),
     path("shop/", views.catalog, name="catalog"),
     path("shop/products/<int:pk>/", views.product_detail, name="product_detail"),
     path("shop/cart/", views.cart, name="cart"),
@@ -27,3 +46,5 @@ urlpatterns = [
     path("manager/sales/", views.sale_list, name="sale_list"),
     path("manager/sales/<int:pk>/", views.receipt, name="receipt"),
 ]
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

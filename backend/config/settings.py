@@ -8,13 +8,13 @@ SECRET_KEY = os.getenv("ARAK_SECRET_KEY") or (
     "insecure-local-development-key-arak-kala-do-not-deploy" if DEBUG else ""
 )
 ALLOWED_HOSTS = [host.strip() for host in os.getenv(
-    "ARAK_ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else ""
+    "ARAK_ALLOWED_HOSTS", "localhost,127.0.0.1,10.0.2.2" if DEBUG else ""
 ).split(",") if host.strip()]
 if not DEBUG and (len(SECRET_KEY) < 50 or not ALLOWED_HOSTS):
     raise ImproperlyConfigured("Set ARAK_SECRET_KEY and ARAK_ALLOWED_HOSTS for deployment.")
 
 STORE_NAME = "اراک کالا"
-STORE_MANAGER_EMAIL = "hossean787@gmail.com"
+STORE_MANAGER_EMAIL = os.getenv("ARAK_MANAGER_EMAIL", "hossean787@gmail.com").strip().lower()
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 INSTALLED_APPS = [
@@ -60,6 +60,9 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_ROOT = Path(os.getenv("ARAK_MEDIA_ROOT", str(BASE_DIR / "media")))
+MEDIA_URL = "/uploads/"
+DATA_UPLOAD_MAX_MEMORY_SIZE = 3 * 1024 * 1024
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SESSION_COOKIE_AGE = 8 * 60 * 60
 SESSION_COOKIE_SECURE = not DEBUG

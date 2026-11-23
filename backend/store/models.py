@@ -16,6 +16,7 @@ class Product(models.Model):
     discount_price = models.PositiveBigIntegerField("قیمت با تخفیف به ریال", null=True, blank=True)
     stock = models.PositiveIntegerField("موجودی", default=0)
     active = models.BooleanField("فعال برای فروش", default=True)
+    images = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["name", "pk"]
@@ -111,3 +112,10 @@ class OrderLine(models.Model):
     @property
     def total(self):
         return self.quantity * self.unit_price
+
+
+class ManagerToken(models.Model):
+    digest = models.CharField(max_length=64, unique=True)
+    account = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    expires_at = models.DateTimeField(db_index=True)
+    auth_hash = models.CharField(max_length=64)
