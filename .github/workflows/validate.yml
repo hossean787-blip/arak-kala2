@@ -182,6 +182,13 @@ jobs:
           test "$(curl --cacert /tmp/arak-test-ca.crt -sS -o /dev/null -w '%{http_code}' https://localhost:8443/uploads/private.sqlite3)" = 404
           docker compose exec -T app python manage.py shell -c 'from store.models import Product; Product.objects.create(sku="RELEASE-RACE-FIXTURE", name="Release acceptance fixture", price=1000, stock=1)'
           python ../scripts/test_release_acceptance.py
+          # Fixture-only full project backup: actual deployed DB, media and tracked source.
+          sudo mkdir -p /tmp/arak-ci-backups
+          sudo chmod 700 /tmp/arak-ci-backups
+          sudo bash ./backup-daily.sh /tmp/arak-ci-backups
+          test "$(sudo find /tmp/arak-ci-backups -name '*.complete' | wc -l)" = 1
+          sudo find /tmp/arak-ci-backups -name SHA256SUMS -execdir sha256sum -c SHA256SUMS \;
+          curl --cacert /tmp/arak-test-ca.crt -fSs --retry 10 --retry-all-errors https://localhost:8443/api/ready
       - name: Tear down isolated CI containers
         if: always()
         working-directory: deploy

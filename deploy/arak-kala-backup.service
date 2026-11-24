@@ -1,0 +1,12 @@
+[Unit]
+Description=Arak Kala private daily backup and restore verification
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+# Replace paths before installing. Runs only on explicitly authorized host.
+WorkingDirectory=/opt/arak-kala/deploy
+ExecStart=/bin/bash /opt/arak-kala/deploy/backup-daily.sh /secure/arak-backups
+UMask=0077
+TimeoutStartSec=1800
