@@ -24,7 +24,7 @@
     </nav>
   </div>
 </header>
-{% if user.is_authenticated and not user.customer %}<div class="wrap manager-nav"><nav aria-label="پنل مدیریت"><a href="{% url 'dashboard' %}">داشبورد</a><a href="{% url 'products' %}">کالاها</a><a href="{% url 'inventory' %}">گردش موجودی</a><a href="{% url 'orders' %}">سفارش‌ها</a><a href="{% url 'pos' %}">فروش حضوری</a><a href="{% url 'sale_list' %}">فاکتورها</a><a href="{% url 'manager_reports' %}">گزارش‌ها</a><a href="{% url 'manager_coupons' %}">کد تخفیف</a><a href="{% url 'manager_shipping' %}">ارسال</a></nav></div>{% endif %}
+{% if user.is_authenticated and not user.customer %}<div class="wrap manager-nav"><nav aria-label="پنل مدیریت"><a href="{% url 'dashboard' %}">داشبورد</a><a href="{% url 'products' %}">کالاها</a><a href="{% url 'inventory' %}">گردش موجودی</a><a href="{% url 'orders' %}">سفارش‌ها</a><a href="{% url 'pos' %}">فروش حضوری</a><a href="{% url 'sale_list' %}">فاکتورها</a><a href="{% url 'manager_reports' %}">گزارش‌ها</a><a href="{% url 'manager_coupons' %}">کد تخفیف</a><a href="{% url 'manager_shipping' %}">ارسال</a><a href="{% url 'manager_returns' %}">درخواست مرجوعی</a></nav></div>{% endif %}
 <main class="wrap">
   {% for message in messages %}<p class="notice {{ message.tags }}" role="status">{{ message }}</p>{% endfor %}
   {% block body %}{% endblock %}

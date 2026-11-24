@@ -106,3 +106,19 @@ if ARAK_MAIL_ENABLED:
             or not EMAIL_HOST or not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD or not DEFAULT_FROM_EMAIL
             or EMAIL_USE_TLS == EMAIL_USE_SSL):
         raise ImproperlyConfigured("Configure a trusted HTTPS origin and authenticated encrypted SMTP before enabling recovery mail.")
+
+
+# Sandbox-only gateway integration; no production payment endpoint or paid flag.
+ARAK_SANDBOX_PAYMENTS = os.getenv("ARAK_SANDBOX_PAYMENTS") == "1"
+ARAK_SANDBOX_MERCHANT_ID = os.getenv("ARAK_SANDBOX_MERCHANT_ID","")
+if ARAK_SANDBOX_PAYMENTS:
+    from uuid import UUID
+    origin = urlsplit(ARAK_PUBLIC_ORIGIN)
+    try:
+        UUID(ARAK_SANDBOX_MERCHANT_ID)
+    except ValueError:
+        raise ImproperlyConfigured("Configure a sandbox merchant identifier.") from None
+    if (os.getenv("ARAK_ISOLATED_STAGING")!="1" or origin.scheme!="https"
+            or not origin.hostname or origin.hostname not in ALLOWED_HOSTS
+            or origin.username or origin.password or origin.path or origin.query or origin.fragment):
+        raise ImproperlyConfigured("Sandbox payments require an explicitly isolated staging deployment and trusted HTTPS origin.")

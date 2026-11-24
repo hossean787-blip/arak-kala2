@@ -51,6 +51,10 @@ class AuthThrottleMiddleware:
             rule = ("password_confirm", 10)
         elif request.path_info.startswith("/account/recovery-email/confirm/"):
             rule = ("email_confirm", 10)
+        elif request.path_info.startswith("/account/orders/") and "/sandbox/" in request.path_info:
+            rule = ("sandbox_payment", 10)
+        elif request.path_info.startswith("/account/orders/") and request.path_info.endswith("/return/"):
+            rule = ("return_request", 10)
         if request.method != "POST" or rule is None:
             return self.get_response(request)
         bucket, limit = rule

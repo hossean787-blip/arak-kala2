@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth.views import LogoutView
 from django.urls import path
-from store import api, views, public_views, manager_views, account_views, pricing_views, readiness
+from store import api, views, public_views, manager_views, account_views, pricing_views, readiness, after_sales
 
 urlpatterns = [
     path("", public_views.home, name="home"),
@@ -35,6 +35,13 @@ urlpatterns = [
     path("password/reset/<uidb64>/<token>/", account_views.CustomerResetConfirm.as_view(), name="reset_confirm"),
     path("password/complete/", account_views.reset_complete, name="reset_complete"),
     path("account/orders/<int:pk>/", account_views.order_detail, name="customer_order_detail"),
+    path("account/orders/<int:pk>/receipt/", after_sales.receipt, name="customer_receipt"),
+    path("account/orders/<int:pk>/return/", after_sales.return_request, name="customer_return"),
+    path("account/orders/<int:pk>/sandbox/start/", after_sales.start_sandbox, name="sandbox_start"),
+    path("account/orders/<int:pk>/sandbox/callback/", after_sales.sandbox_callback, name="sandbox_callback"),
+    path("account/orders/<int:pk>/sandbox/result/", after_sales.sandbox_result, name="sandbox_result"),
+    path("manager/returns/", after_sales.returns, name="manager_returns"),
+    path("manager/returns/<int:pk>/", after_sales.review_return, name="review_return"),
     path("account/orders/", views.customer_orders, name="public_orders"),
     path("account/orders/", views.customer_orders, name="customer_orders"),
     path("account/addresses/", public_views.addresses, name="addresses"),
