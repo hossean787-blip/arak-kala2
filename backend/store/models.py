@@ -78,6 +78,12 @@ class Customer(models.Model):
     name = models.CharField(max_length=150)
     phone = models.CharField(max_length=11, unique=True)
     alias = models.CharField(max_length=30, unique=True, null=True, blank=True)
+    recovery_email = models.EmailField(max_length=254, unique=True, null=True, blank=True)
+    pending_email = models.EmailField(max_length=254, blank=True, default="")
+    verification_digest = models.CharField(max_length=64, blank=True, default="")
+    verification_expires = models.DateTimeField(null=True, blank=True)
+    verification_sent_at = models.DateTimeField(null=True, blank=True)
+    reset_sent_at = models.DateTimeField(null=True, blank=True)
 
 
 class Order(models.Model):

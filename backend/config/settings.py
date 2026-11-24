@@ -82,3 +82,27 @@ ARAK_TRUST_REAL_IP = os.getenv("ARAK_TRUST_REAL_IP") == "1"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SESSION_COOKIE_HTTPONLY = True
+
+
+# Recovery mail is opt-in, never logs codes or links. Public origin is fixed,
+# rather than constructed from untrusted Host/Forwarded headers.
+from urllib.parse import urlsplit
+ARAK_MAIL_ENABLED = os.getenv("ARAK_MAIL_ENABLED") == "1"
+ARAK_PUBLIC_ORIGIN = os.getenv("ARAK_PUBLIC_ORIGIN", "").rstrip("/")
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("ARAK_SMTP_HOST", "")
+EMAIL_PORT = int(os.getenv("ARAK_SMTP_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("ARAK_SMTP_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("ARAK_SMTP_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("ARAK_SMTP_TLS", "1") == "1"
+EMAIL_USE_SSL = os.getenv("ARAK_SMTP_SSL", "0") == "1"
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = os.getenv("ARAK_FROM_EMAIL", "")
+PASSWORD_RESET_TIMEOUT = 1800
+if ARAK_MAIL_ENABLED:
+    origin = urlsplit(ARAK_PUBLIC_ORIGIN)
+    if (origin.scheme != "https" or not origin.hostname or origin.username or origin.password
+            or origin.path or origin.query or origin.fragment or origin.hostname not in ALLOWED_HOSTS
+            or not EMAIL_HOST or not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD or not DEFAULT_FROM_EMAIL
+            or EMAIL_USE_TLS == EMAIL_USE_SSL):
+        raise ImproperlyConfigured("Configure a trusted HTTPS origin and authenticated encrypted SMTP before enabling recovery mail.")

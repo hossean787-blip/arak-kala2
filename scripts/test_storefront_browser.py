@@ -100,13 +100,29 @@ try:
             page.goto(base+"/account/")
             expect(page.locator("h1")).to_have_text("حساب کاربری")
             page.screenshot(path=out/f"account-{width}.png",full_page=True,animations="disabled")
+            page.goto(base+"/account/profile/")
+            expect(page.locator("input[name=current_password]")).to_be_visible()
+            page.goto(base+"/account/password/")
+            expect(page.locator("input[name=old_password]")).to_be_visible()
+            page.goto(base+"/account/recovery-email/")
+            expect(page.locator("input[name=email]")).to_be_visible()
+            page.goto(base+"/password/forgot/")
+            expect(page.locator("input[name=email]")).to_be_visible()
             page.goto(base+"/account/addresses/")
             page.locator("input[name=title]").fill("خانه")
             page.locator("input[name=recipient]").fill("گیرنده آزمایشی")
             page.locator("input[name=phone]").fill(phone)
             page.locator("textarea[name=address]").fill("نشانی آزمایشی مرورگر")
-            page.locator(".public-form button").click()
-            expect(page.locator(".address-row")).to_have_count(1)
+            with page.expect_navigation(wait_until="domcontentloaded") as navigation:
+                page.get_by_role("button",name="ذخیره نشانی",exact=True).click()
+            response=navigation.value
+            assert response and response.status==200, (page.url,response.status if response else None)
+            try:
+                expect(page.locator(".address-row")).to_have_count(1)
+            except AssertionError:
+                page.screenshot(path=out/f"address-failure-{width}.png",full_page=True)
+                print("Address page diagnostic:",page.url,page.locator("main").inner_text()[:1000],flush=True)
+                raise
             page.screenshot(path=out/f"addresses-{width}.png",full_page=True,animations="disabled")
             page.goto(base+"/checkout/")
             page.locator(".form-panel").get_by_role("link",name="خانه",exact=True).click()
