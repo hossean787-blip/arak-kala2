@@ -172,12 +172,16 @@ jobs:
           docker compose run --rm app python manage.py migrate --noinput
           docker compose run --rm app python manage.py collectstatic --noinput
           docker compose up -d --wait
-          # Self-signed local test only. Real deployment must validate public CA.
-          curl -fkSs --retry 10 --retry-all-errors https://localhost:8443/api/ready
-          curl -fkSs https://localhost:8443/ | grep -q 'ARAK'
-          curl -fkSs https://localhost:8443/static/storefront/pages.css -o /tmp/arak-pages.css
+          # Trust the fixture CA rather than disabling TLS validation.
+          docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt /tmp/arak-test-ca.crt
+          curl --cacert /tmp/arak-test-ca.crt -fSs --retry 10 --retry-all-errors https://localhost:8443/api/ready
+          curl --cacert /tmp/arak-test-ca.crt -fSs https://localhost:8443/ -o /tmp/arak-home.html
+          grep -q 'ARAK' /tmp/arak-home.html
+          curl --cacert /tmp/arak-test-ca.crt -fSs https://localhost:8443/static/storefront/pages.css -o /tmp/arak-pages.css
           test -s /tmp/arak-pages.css
-          test "$(curl -kSs -o /dev/null -w '%{http_code}' https://localhost:8443/uploads/private.sqlite3)" = 404
+          test "$(curl --cacert /tmp/arak-test-ca.crt -sS -o /dev/null -w '%{http_code}' https://localhost:8443/uploads/private.sqlite3)" = 404
+          docker compose exec -T app python manage.py shell -c 'from store.models import Product; Product.objects.create(sku="RELEASE-RACE-FIXTURE", name="Release acceptance fixture", price=1000, stock=1)'
+          python ../scripts/test_release_acceptance.py
       - name: Tear down isolated CI containers
         if: always()
         working-directory: deploy
