@@ -102,10 +102,14 @@ jobs:
             git archive "$rev" -- . ':(exclude)archives/sepas' | tar -xf - -C "$work/snapshot"
             echo "Scanning revision $rev (separate Sepas archive excluded)"
             rm -f "$work/findings.json"
-            if ! /tmp/gitleaks dir --redact=100 --no-banner --max-archive-depth 2 --max-target-megabytes 30 --report-format json --report-path "$work/findings.json" "$work/snapshot"; then
+            scan_status=0
+            /tmp/gitleaks dir --redact=100 --no-banner --max-archive-depth 2 --max-target-megabytes 30 --report-format json --report-path "$work/findings.json" "$work/snapshot" || scan_status=$?
+            if [ "$scan_status" -eq 1 ]; then
+              python scripts/triage_history_findings.py "$work/snapshot" "$work/findings.json" || failed=1
+            elif [ "$scan_status" -ne 0 ]; then
+              echo "Scanner error: $scan_status"
               failed=1
             fi
-            python -c 'import json,sys,pathlib; p=pathlib.Path(sys.argv[1]); data=json.loads(p.read_text()) if p.exists() else []; [print("Finding:", x.get("RuleID"), x.get("File"), "line", x.get("StartLine")) for x in (data or [])]' "$work/findings.json"
             rm -rf "$work/snapshot"
           done < "$work/revisions"
           exit "$failed"
