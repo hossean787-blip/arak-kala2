@@ -20,6 +20,9 @@ RULES = {
     "/api/auth/register": ("register", 15),
     "/shop/account/register/": ("register", 15),
     "/shop/track/": ("track", 30),
+    "/login/": ("customer_login", 30),
+    "/register/": ("register", 15),
+    "/tracking/": ("track", 30),
 }
 WINDOW = 300
 

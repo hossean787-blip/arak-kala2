@@ -13,7 +13,7 @@
 <div class="announcement"><span class="dot"></span> اراک کالا — تجربه‌ای تازه از خرید آنلاین <span class="dot"></span></div>
 <header class="site-header">
   <div class="shell nav">
-    <a class="logo" href="/" aria-label="اراک کالا - صفحه اصلی"><span>ARAK</span><span>KALA<span class="logo-dot">.</span></span></a>
+    <a class="logo" href="/" aria-label="اراک کالا - صفحه اصلی"><span>ARAK</span><span>KALA</span></a>
     <nav class="desktop-nav" aria-label="منوی اصلی"><a href="#catalog">محصولات</a><a href="#about">درباره ما</a><a href="{% url 'track' %}">پیگیری سفارش</a></nav>
     <div class="nav-actions">
       <button id="accountBtn" class="icon-btn" aria-label="حساب کاربری" title="حساب کاربری"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/></svg></button>
@@ -22,6 +22,7 @@
     </div>
   </div>
 </header>
+<a class="skip-link" href="#catalog">رفتن به محصولات</a>
 <main>
 <section class="hero shell">
  <div class="hero-copy">
@@ -29,13 +30,13 @@
   <h1>استایل خودتو<br> <span>از نو تعریف کن.</span></h1>
   <p>از اولین نگاه تا آخرین انتخاب، خرید باید ساده، سریع و لذت‌بخش باشه. اراک کالا برای همین ساخته شده.</p>
   <div class="hero-buttons"><a class="btn btn-dark" href="#catalog">مشاهده محصولات <span aria-hidden="true">↖</span></a><span class="microcopy"><span class="micro-circle">✦</span> انتخاب با سلیقه، خرید با اطمینان</span></div>
-  <div class="hero-index"><span>01</span><span class="index-line"></span><span>03</span></div>
+  <div class="hero-index"><span>ARAK KALA</span><span class="index-line"></span><span>EST. 2026</span></div>
  </div>
  <div class="hero-art" aria-label="طرح گرافیکی اختصاصی اراک کالا" role="img">
   <div class="art-orbit art-orbit-one"></div><div class="art-orbit art-orbit-two"></div>
   <div class="art-backdrop"></div>
   <div class="art-tile art-tile-top"><span class="tiny-star">✦</span><span>new<br>collection</span></div>
-  <div class="art-main"><div class="art-shine"></div><div class="art-main-inner">A<span>K</span></div></div>
+  <div class="art-main"><div class="art-shine"></div><div class="art-main-inner"><span>ARAK</span><span>KALA</span></div></div>
   <div class="art-tile art-tile-bottom"><span>ARAK / KALA</span><span class="mini-arrow">↗</span></div>
   <div class="art-capsule">YOU ARE THE STYLE</div>
  </div>
@@ -48,14 +49,14 @@
 <section class="catalog shell" id="catalog">
  <div class="section-intro"><div><span class="label-sup">THE COLLECTION</span><h2>دنیای انتخاب‌های تو<span class="point">.</span></h2><p>چیزی که دنبالش هستی، از همین‌جا شروع می‌شه.</p></div><span class="catalog-english">CURATED FOR YOU / 2026</span></div>
  <div class="catalog-toolbar"><div id="categories" class="chips"><button type="button" class="chip active" data-cat="">همه محصولات</button></div><label class="search-bar"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="7"/><path d="m16 16 5 5"/></svg><input id="searchInput" type="search" placeholder="دنبال چی می‌گردی؟" aria-label="جستجو در محصولات"></label></div>
- <div id="productGrid" class="product-grid" aria-live="polite"></div>
+ <div class="catalog-status"><span id="resultCount" role="status">در حال دریافت محصولات…</span><span>مجموعه محصولات</span></div><div id="productGrid" class="product-grid" aria-busy="true"></div>
  <div id="emptyState" class="empty-state" hidden><span class="empty-sigil">✳</span><h3 id="emptyTitle">هنوز محصولی ثبت نشده</h3><p id="emptyText">پس از اضافه‌شدن محصولات، اینجا نمایش داده می‌شوند.</p><span class="empty-underline"></span></div>
 </section>
 <section class="statement shell" id="about"><span class="statement-number">/ 01</span><div><span class="statement-kicker">OUR PHILOSOPHY</span><h2>کمتر شلوغی.<br><em>بیشتر خودت.</em></h2><p>ما به انتخاب‌های خوب و تجربه‌های ساده اعتقاد داریم؛ هر چیزی که لازم داری، بدون سروصدای اضافی.</p></div><div class="statement-mark" aria-hidden="true">✳</div></section>
 <section class="newsletter shell" id="newsletter"><div><span class="label-sup">STAY CONNECTED</span><h2>از اراک کالا خبر داشته باش.</h2><p>برای پرسش درباره سفارش، از بخش حساب کاربری و سفارش‌ها استفاده کن.</p></div><a class="btn btn-light" href="#catalog">بازگشت به محصولات ↖</a></section>
 </main>
-<footer class="footer"><div class="shell footer-row"><div class="logo footer-logo"><span>ARAK</span><span>KALA<span class="logo-dot">.</span></span></div><p>اراک کالا · فروشگاه آنلاین مستقل</p><small>© 2026 ARAK KALA</small></div></footer>
-<div class="bottom-nav" aria-label="ناوبری موبایل"><a href="#catalog"><span>⌂</span>فروشگاه</a><button id="mobileOrdersBtn"><span>▤</span>سفارش‌ها</button><button id="mobileAccountBtn"><span>♙</span>حساب من</button><button id="mobileCartBtn"><span>▱</span>سبد خرید</button></div>
+<footer class="footer"><div class="shell footer-row"><div class="logo footer-logo"><span>ARAK</span><span>KALA</span></div><p>اراک کالا · فروشگاه آنلاین مستقل</p><small>© 2026 ARAK KALA</small></div></footer>
+<nav class="bottom-nav" aria-label="ناوبری موبایل"><a href="#catalog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/></svg><span>فروشگاه</span></a><button id="mobileOrdersBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h4"/></svg><span>سفارش‌ها</span></button><button id="mobileAccountBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 21c0-4.5 3.3-7 7.5-7s7.5 2.5 7.5 7"/></svg><span>حساب من</span></button><button id="mobileCartBtn" class="mobile-cart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14l1.5 14h-17zM9 8V6a3 3 0 0 1 6 0v2"/></svg><span>سبد خرید</span><b id="mobileCartCount" class="mobile-count" hidden>۰</b></button></nav>
 <div id="overlay" class="overlay" hidden></div>
 <aside id="drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden><div class="drawer-head"><h2 id="drawerTitle">سبد خرید</h2><button class="close-btn" data-close aria-label="بستن">×</button></div><div id="cartItems" class="drawer-content"></div><div class="drawer-bottom"><div class="totals"><span>جمع کالاها</span><b id="cartTotal">۰ ریال</b></div><p class="payment-note">این نسخه آزمایشی است و پرداخت آنلاین ندارد.</p><button class="btn btn-dark full" id="checkoutBtn">ادامه ثبت سفارش ↖</button></div></aside>
 <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden><div class="modal-card"><button class="close-btn modal-close" data-close aria-label="بستن">×</button><div id="modalContent"></div></div></div>

@@ -5,7 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from .models import MAX_STOCK, MAX_UNIT_PRICE, Customer, Order, Product
+from .models import MAX_STOCK, MAX_UNIT_PRICE, Customer, Order, Product, SavedAddress
 
 DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 
@@ -131,3 +131,12 @@ class CheckoutForm(forms.ModelForm):
 class TrackingForm(forms.Form):
     code = forms.CharField(label="کد پیگیری", max_length=20)
     phone = MobileField()
+
+
+class SavedAddressForm(forms.ModelForm):
+    phone = MobileField()
+
+    class Meta:
+        model = SavedAddress
+        fields = ("title", "recipient", "phone", "address")
+        widgets = {"address": forms.Textarea(attrs={"rows": 4})}

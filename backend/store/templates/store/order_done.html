@@ -1,9 +1,1 @@
-{% extends 'store/base.html' %}
-{% block body %}
-<section class="panel narrow">
-  <h1>سفارش ثبت شد</h1>
-  <p>کد زیر را برای پیگیری سفارش نگه دارید.</p>
-  <p class="tracking-code" dir="ltr">{{ code }}</p>
-  <a class="button" href="{% url 'track' %}">پیگیری سفارش</a>
-</section>
-{% endblock %}
+{% extends 'store/public_base.html' %}{% block title %}ثبت سفارش | اراک کالا{% endblock %}{% block body %}<section class="shell page-section"><div class="public-panel form-panel"><h1>سفارش آزمایشی ثبت شد</h1><p>کد پیگیری را نگه دارید. پرداختی انجام نشده است.</p><p class="tracking-code" dir="ltr">{{ code }}</p><a class="btn btn-dark" href="{% url 'public_track' %}">پیگیری سفارش</a></div></section>{% endblock %}

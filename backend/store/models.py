@@ -125,3 +125,14 @@ class AuthThrottle(models.Model):
     key = models.CharField(max_length=64, primary_key=True)
     window = models.PositiveBigIntegerField(db_index=True)
     count = models.PositiveIntegerField(default=0)
+
+
+class SavedAddress(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="addresses")
+    title = models.CharField("عنوان نشانی", max_length=60)
+    recipient = models.CharField("نام گیرنده", max_length=150)
+    phone = models.CharField("موبایل", max_length=11)
+    address = models.CharField("نشانی کامل", max_length=700)
+
+    class Meta:
+        ordering = ["pk"]

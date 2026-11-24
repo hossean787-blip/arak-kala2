@@ -20,7 +20,7 @@ from django.views.decorators.http import require_POST
 from .forms import (CartLineForm, CheckoutForm, CustomerLoginForm, CustomerRegistrationForm,
                     LineForm, ManagerAuthenticationForm, ProductForm, SaleForm, SaleLineFormSet,
                     StockForm, TrackingForm)
-from .models import Customer, Order, Product, Sale
+from .models import Customer, Order, Product, Sale, SavedAddress
 from .services import NEXT_STATUS, increase_stock, place_order, record_sale, update_order
 
 
@@ -67,8 +67,8 @@ def customer_register(request):
         else:
             login(request, account)
             return redirect("customer_orders")
-    return render(request, "store/form.html", {
-        "form": form, "title": "ثبت‌نام مشتری", "submit": "ایجاد حساب",
+    return render(request, "store/public_form.html", {
+        "form": form, "title": "ثبت‌نام مشتری", "submit": "ایجاد حساب", "register": True,
     })
 
 
@@ -108,7 +108,7 @@ def catalog(request):
     ).distinct()
     if search:
         products = products.filter(Q(name__icontains=search) | Q(sku__icontains=search)
-                                   | Q(barcode__iexact=search))
+                                   | Q(barcode__iexact=search) | Q(description__icontains=search))
     if category:
         products = products.filter(category=category)
     if sort in {"price", "-price"}:
@@ -116,13 +116,13 @@ def catalog(request):
         products = products.order_by("-effective" if sort == "-price" else "effective", "pk")
     page = Paginator(products, 24).get_page(request.GET.get("page"))
     return render(request, "store/catalog.html", {
-        "page": page, "categories": categories, "selected": category, "q": search, "sort": sort,
+        "page": page, "search_page": request.resolver_match.url_name == "search", "categories": categories, "selected": category, "q": search, "sort": sort,
     })
 
 
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk, active=True)
-    return render(request, "store/product_detail.html", {"product": product})
+    return render(request, "store/product_detail.html", {"product": product, "favorite": product.pk in request.session.get("favorites", [])})
 
 
 @require_POST
@@ -169,11 +169,17 @@ def cart(request):
 @never_cache
 def checkout(request):
     basket = request.session.get("cart", {})
+    if basket and "order_token" not in request.session:
+        request.session["order_token"] = str(uuid4())
     if not basket:
         return redirect("order_done" if request.session.get("last_order") else "cart")
     account = (Customer.objects.filter(account=request.user).first()
                if request.user.is_authenticated else None)
     initial = {"customer": account.name, "phone": account.phone} if account else {}
+    addresses = SavedAddress.objects.filter(customer=account) if account else SavedAddress.objects.none()
+    selected = addresses.filter(pk=request.GET.get("address")).first() if request.GET.get("address", "").isdigit() and len(request.GET["address"]) <= 18 else None
+    if selected:
+        initial.update(customer=selected.recipient, phone=selected.phone, address=selected.address)
     form = CheckoutForm(request.POST if request.method == "POST" else None, initial=initial)
     if request.method == "POST" and form.is_valid():
         try:
@@ -190,7 +196,7 @@ def checkout(request):
             request.session.pop("order_token", None)
             request.session["last_order"] = order.code
             return redirect("order_done")
-    return render(request, "store/form.html", {"title": "ثبت سفارش", "form": form, "submit": "ثبت سفارش"})
+    return render(request, "store/public_form.html", {"title": "تکمیل خرید", "form": form, "submit": "ثبت سفارش آزمایشی", "checkout": True, "addresses": addresses})
 
 
 @never_cache
