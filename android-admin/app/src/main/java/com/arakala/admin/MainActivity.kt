@@ -56,7 +56,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onImageBytes(uri: Uri): ByteArray {
-        val bitmap = contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it,null,bounds) }
+        require(bounds.outWidth > 0 && bounds.outHeight > 0 &&
+            bounds.outWidth.toLong()*bounds.outHeight <= 100_000_000L) { "ابعاد تصویر معتبر نیست" }
+        val options = BitmapFactory.Options().apply { inSampleSize = imageSample(bounds.outWidth,bounds.outHeight) }
+        val bitmap = contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it,null,options) }
             ?: error("تصویر انتخاب‌شده قابل خواندن نیست")
         val maxSide = maxOf(bitmap.width, bitmap.height)
         val scale = minOf(1f, 1400f / maxSide)
@@ -64,8 +69,13 @@ class MainActivity : ComponentActivity() {
             bitmap, (bitmap.width * scale).toInt().coerceAtLeast(1), (bitmap.height * scale).toInt().coerceAtLeast(1), true
         )
         val result = ByteArrayOutputStream()
-        reduced.compress(Bitmap.CompressFormat.JPEG, 78, result)
-        return result.toByteArray().also { require(it.size <= 2 * 1024 * 1024) { "حجم تصویر بیش از ۲ مگابایت است" } }
+        try {
+            require(reduced.compress(Bitmap.CompressFormat.JPEG, 78, result)) { "تبدیل تصویر موفق نبود" }
+            return result.toByteArray().also { require(it.size <= 2 * 1024 * 1024) { "حجم تصویر بیش از ۲ مگابایت است" } }
+        } finally {
+            if(reduced !== bitmap) reduced.recycle()
+            bitmap.recycle()
+        }
     }
 }
 
@@ -176,11 +186,11 @@ private fun AdminScreen(api: ShopApi, imageBytes: (Uri) -> ByteArray, activity: 
                 if (page == "edit") {
                     ProductEditor(editing, busy, onBack = { page = "products" }, onSave = { json, images ->
                         perform({
-                            val old = editing?.optJSONArray("images") ?: JSONArray()
-                            val all = JSONArray()
-                            for (i in 0 until old.length()) all.put(old.getString(i))
-                            images.forEach { if (all.length() < 8) all.put(api.upload(imageBytes(it))) }
-                            json.put("images", all)
+                            val all = json.optJSONArray("images")
+                            if (all != null) {
+                                require(all.length() + images.size <= 8) { "حداکثر ۸ تصویر مجاز است" }
+                                images.forEach { all.put(api.upload(imageBytes(it))) }
+                            }
                             api.saveProduct(editing?.getInt("id"), json)
                         }) { message = "محصول ذخیره شد"; page = "products"; reload() }
                     })
@@ -241,7 +251,7 @@ private fun Dashboard(data: JSONObject, onProducts:()->Unit,onOrders:()->Unit,on
         }
         Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
             StatCard("کم‌موجودی",data.optInt("low_stock").toString(),Modifier.weight(1f))
-            StatCard("سفارش تأییدشده",data.optLong("sales_total").toString()+" ریال",Modifier.weight(1f))
+            StatCard("ارزش سفارش تأییدشده؛ نه وصول",data.optLong("sales_total").toString()+" ریال",Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
         Button(onClick=onProducts,modifier=Modifier.fillMaxWidth().height(52.dp)){Text("مدیریت و ثبت محصول  ↖")}
@@ -295,12 +305,20 @@ private fun ProductEditor(original:JSONObject?,busy:Boolean,onBack:()->Unit,onSa
     var price by remember(original) { mutableStateOf(original?.optLong("price")?.toString() ?: "") }
     var stock by remember(original) { mutableStateOf(original?.optInt("stock")?.toString() ?: "") }
     var active by remember(original) { mutableStateOf(original?.optBoolean("active", true) ?: true) }
+    var discount by remember(original) { mutableStateOf(if(original!=null && !original.isNull("discount_price")) original.optLong("discount_price").toString() else "") }
+    var sku by remember(original) { mutableStateOf(original?.optString("sku") ?: "") }
+    var barcode by remember(original) { mutableStateOf(original?.optString("barcode") ?: "") }
+    val initialImages = remember(original) {
+        val arr=original?.optJSONArray("images") ?: JSONArray()
+        (0 until arr.length()).map { arr.getString(it) }
+    }
+    val existingImages = remember(original) { mutableStateListOf<String>().apply { addAll(initialImages) } }
     val selectedImages= remember(original) { mutableStateListOf<Uri>() }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(8)) { uris ->
-        selectedImages.clear();selectedImages.addAll(uris.take(8 - (original?.optJSONArray("images")?.length()?:0)))
+        selectedImages.clear();selectedImages.addAll(uris.take((8-existingImages.size).coerceAtLeast(0)))
     }
-    val valid = name.isNotBlank() && price.toLongOrNull()!=null && stock.toIntOrNull()!=null &&
-        (price.toLongOrNull()?:-1)>=0 && (stock.toIntOrNull()?:-1)>=0
+    val valid = validProductInput(name,category,description,price,discount,stock,sku,barcode) &&
+        existingImages.size+selectedImages.size<=8
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
             Text(if(original==null)"محصول جدید" else "ویرایش محصول",fontSize=24.sp,fontWeight=FontWeight.Black)
@@ -311,10 +329,20 @@ private fun ProductEditor(original:JSONObject?,busy:Boolean,onBack:()->Unit,onSa
             item { OutlinedTextField(name,{name=it},modifier=Modifier.fillMaxWidth(),label={Text("نام محصول")},singleLine=true) }
             item { OutlinedTextField(description,{description=it},modifier=Modifier.fillMaxWidth(),label={Text("توضیحات")},minLines=2) }
             item { OutlinedTextField(category,{category=it},modifier=Modifier.fillMaxWidth(),label={Text("دسته‌بندی")},singleLine=true) }
+            item { OutlinedTextField(sku,{sku=it},modifier=Modifier.fillMaxWidth(),label={Text("کد کالا (اختیاری برای کالای جدید)")},singleLine=true) }
+            item { OutlinedTextField(barcode,{barcode=it},modifier=Modifier.fillMaxWidth(),label={Text("بارکد اختیاری")},singleLine=true) }
             item { OutlinedTextField(price,{price=it},modifier=Modifier.fillMaxWidth(),label={Text("قیمت (ریال)")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),singleLine=true) }
+            item { OutlinedTextField(discount,{discount=it},modifier=Modifier.fillMaxWidth(),label={Text("قیمت تخفیف‌دار (ریال، اختیاری)")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),singleLine=true) }
             item { OutlinedTextField(stock,{stock=it},modifier=Modifier.fillMaxWidth(),label={Text("موجودی")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),singleLine=true) }
             item {
-                OutlinedButton(onClick={picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))}, modifier=Modifier.fillMaxWidth()) {
+                existingImages.toList().forEachIndexed { index, url ->
+                    Row(verticalAlignment=Alignment.CenterVertically) {
+                        Text(if(index==0) "تصویر اصلی" else "تصویر ${index+1}", modifier=Modifier.weight(1f))
+                        if(index>0) TextButton(enabled=!busy,onClick={existingImages.remove(url);existingImages.add(0,url)}) { Text("اصلی") }
+                        TextButton(enabled=!busy,onClick={existingImages.remove(url)}) { Text("برداشتن") }
+                    }
+                }
+                OutlinedButton(enabled=!busy&&existingImages.size<8,onClick={picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))}, modifier=Modifier.fillMaxWidth()) {
                     Text("انتخاب تصاویر محصول (حداکثر ۸ تصویر)")
                 }
                 Text("${selectedImages.size} تصویر جدید انتخاب شد",fontSize=11.sp,color=Color.Gray)
@@ -326,10 +354,17 @@ private fun ProductEditor(original:JSONObject?,busy:Boolean,onBack:()->Unit,onSa
                 }
             }
             item {
+                if(!valid) Text("نام، قیمت، تخفیف، موجودی و طول فیلدها را بررسی کنید.",color=Color.Gray,fontSize=12.sp)
                 Button(enabled=valid&&!busy,onClick={
                     val payload=JSONObject().put("name",name.trim()).put("description",description.trim())
-                        .put("category", category.trim()).put("price", price.toLong()).put("active", active)
-                    val requestedStock = stock.toInt()
+                        .put("category", category.trim()).put("price", parseNumber(price)!!).put("active", active)
+                        .put("barcode",barcode.trim()).put("discount_price",parseNumber(discount) ?: JSONObject.NULL)
+                    if(sku.isNotBlank() || original==null) payload.put("sku",sku.trim())
+                    if(existingImages.toList()!=initialImages || selectedImages.isNotEmpty()) {
+                        payload.put("images",JSONArray(existingImages.toList()))
+                        if(original!=null) payload.put("expected_images",JSONArray(initialImages))
+                    }
+                    val requestedStock = parseNumber(stock)!!.toInt()
                     val previousStock = original?.getInt("stock")
                     if (requestedStock != previousStock) {
                         payload.put("stock", requestedStock)
