@@ -86,6 +86,26 @@ class Customer(models.Model):
     reset_sent_at = models.DateTimeField(null=True, blank=True)
 
 
+class Coupon(models.Model):
+    code = models.CharField("کد تخفیف", max_length=32, unique=True)
+    amount = models.PositiveBigIntegerField("تخفیف ثابت به ریال")
+    minimum = models.PositiveBigIntegerField("حداقل مبلغ خرید", default=0)
+    max_uses = models.PositiveIntegerField("سقف دفعات استفاده", default=1)
+    active = models.BooleanField("فعال", default=True)
+
+    class Meta:
+        ordering=["code"]
+
+
+class ShippingMethod(models.Model):
+    name = models.CharField("روش ارسال", max_length=80, unique=True)
+    fee = models.PositiveBigIntegerField("هزینه ارسال به ریال", default=0)
+    active = models.BooleanField("فعال", default=False)
+
+    class Meta:
+        ordering=["pk"]
+
+
 class Order(models.Model):
     class Status(models.TextChoices):
         NEW = "new", "در انتظار بررسی"
@@ -101,6 +121,13 @@ class Order(models.Model):
     account = models.ForeignKey(Customer, null=True, blank=True, on_delete=models.PROTECT)
     address = models.CharField("نشانی", max_length=700)
     status = models.CharField(max_length=12, choices=Status, default=Status.NEW)
+    subtotal = models.PositiveBigIntegerField(default=0)
+    discount = models.PositiveBigIntegerField(default=0)
+    shipping_fee = models.PositiveBigIntegerField(default=0)
+    coupon = models.ForeignKey(Coupon,null=True,blank=True,on_delete=models.PROTECT)
+    coupon_code = models.CharField(max_length=32,blank=True,default="")
+    shipping_method = models.ForeignKey(ShippingMethod,null=True,blank=True,on_delete=models.PROTECT)
+    shipping_name = models.CharField(max_length=80,blank=True,default="")
     total = models.PositiveBigIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 

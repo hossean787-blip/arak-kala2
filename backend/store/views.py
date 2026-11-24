@@ -3,6 +3,7 @@ from uuid import UUID, uuid4
 
 from django import forms
 from django.conf import settings
+from django.core import signing
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.views import LoginView, redirect_to_login
@@ -20,7 +21,8 @@ from django.views.decorators.http import require_POST
 from .forms import (CartLineForm, CheckoutForm, CustomerLoginForm, CustomerRegistrationForm,
                     LineForm, ManagerAuthenticationForm, ProductForm, SaleForm, SaleLineFormSet,
                     StockForm, TrackingForm)
-from .models import Customer, Order, Product, Sale, SavedAddress, MAX_UNIT_PRICE, StockMovement
+from .models import Customer, Order, Product, Sale, SavedAddress, MAX_UNIT_PRICE, StockMovement, ShippingMethod
+from .pricing import quote
 from .favorites import favorite_ids
 from .services import NEXT_STATUS, increase_stock, place_order, record_sale, update_order
 
@@ -195,35 +197,54 @@ def cart(request):
 
 @never_cache
 def checkout(request):
-    basket = request.session.get("cart", {})
+    basket=request.session.get("cart",{})
     if basket and "order_token" not in request.session:
-        request.session["order_token"] = str(uuid4())
+        request.session["order_token"]=str(uuid4())
     if not basket:
         return redirect("order_done" if request.session.get("last_order") else "cart")
-    account = (Customer.objects.filter(account=request.user).first()
-               if request.user.is_authenticated else None)
-    initial = {"customer": account.name, "phone": account.phone} if account else {}
-    addresses = SavedAddress.objects.filter(customer=account) if account else SavedAddress.objects.none()
-    selected = addresses.filter(pk=request.GET.get("address")).first() if request.GET.get("address", "").isdigit() and len(request.GET["address"]) <= 18 else None
+    account=Customer.objects.filter(account=request.user).first() if request.user.is_authenticated else None
+    initial={"customer":account.name,"phone":account.phone} if account else {}
+    addresses=SavedAddress.objects.filter(customer=account) if account else SavedAddress.objects.none()
+    selected=addresses.filter(pk=request.GET.get("address")).first() if request.GET.get("address","").isdigit() and len(request.GET["address"])<=18 else None
     if selected:
-        initial.update(customer=selected.recipient, phone=selected.phone, address=selected.address)
-    form = CheckoutForm(request.POST if request.method == "POST" else None, initial=initial)
-    if request.method == "POST" and form.is_valid():
+        initial.update(customer=selected.recipient,phone=selected.phone,address=selected.address)
+    form=CheckoutForm(request.POST if request.method=="POST" else None,initial=initial)
+    items={int(key):qty for key,qty in basket.items()}
+    methods=ShippingMethod.objects.filter(active=True)
+    coupon_code=request.POST.get("coupon_code","").strip().upper()[:32] if request.method=="POST" else ""
+    raw_shipping=request.POST.get("shipping_id","") if request.method=="POST" else ""
+    if raw_shipping.isascii() and raw_shipping.isdigit() and len(raw_shipping)<=18:
+        shipping_id=int(raw_shipping)
+    elif request.method=="GET" or not raw_shipping:
+        shipping_id=methods.values_list("pk",flat=True).first()
+    else:
+        shipping_id=-1
+    priced=None
+    quote_error=""
+    try:
+        priced=quote(items,coupon_code,shipping_id)
+    except ValidationError as exc:
+        quote_error=exc.messages[0]
+    if request.method=="POST" and request.POST.get("intent")!="quote" and form.is_valid() and priced:
+        signed=request.POST.get("price_quote","")
         try:
-            order = place_order(UUID(request.session["order_token"]),
-                                form.cleaned_data["customer"], form.cleaned_data["phone"],
-                                form.cleaned_data["address"],
-                                {int(key): quantity for key, quantity in basket.items()}, account)
-        except ValidationError as error:
-            form.add_error(None, error)
-        except (IntegrityError, OperationalError):
-            form.add_error(None, "ثبت سفارش کامل نشد. دوباره تلاش کنید.")
+            # Old API/legacy form may omit quote only for a no-shipping/no-coupon order.
+            expected=signing.loads(signed,salt="arak-checkout-price",max_age=900) if signed else None
+            if expected is None and (coupon_code or shipping_id is not None):
+                raise ValidationError("ابتدا مبلغ نهایی را محاسبه کنید.")
+            if expected is not None and expected!=priced:
+                raise ValidationError("مبلغ سفارش تغییر کرده است؛ خلاصه جدید را بررسی کنید.")
+            order=place_order(UUID(request.session["order_token"]),form.cleaned_data["customer"],form.cleaned_data["phone"],form.cleaned_data["address"],items,account,coupon_code=coupon_code,shipping_id=shipping_id,expected_quote=expected if expected is not None else priced)
+        except (signing.BadSignature,ValidationError):
+            form.add_error(None,"مبلغ یا اعتبار سفارش تغییر کرده است؛ خلاصه جدید را بررسی و دوباره ثبت کنید.")
+        except (IntegrityError,OperationalError):
+            form.add_error(None,"ثبت سفارش کامل نشد. دوباره تلاش کنید.")
         else:
-            request.session.pop("cart", None)
-            request.session.pop("order_token", None)
-            request.session["last_order"] = order.code
+            request.session.pop("cart",None)
+            request.session.pop("order_token",None)
+            request.session["last_order"]=order.code
             return redirect("order_done")
-    return render(request, "store/public_form.html", {"title": "تکمیل خرید", "form": form, "submit": "ثبت سفارش آزمایشی", "checkout": True, "addresses": addresses})
+    return render(request,"store/public_form.html",{"title":"تکمیل خرید","form":form,"submit":"ثبت سفارش آزمایشی","checkout":True,"addresses":addresses,"methods":methods,"shipping_id":shipping_id,"coupon_code":coupon_code,"priced":priced,"quote_error":quote_error,"price_quote":signing.dumps(priced,salt="arak-checkout-price") if priced else ""})
 
 
 @never_cache
@@ -231,7 +252,7 @@ def order_done(request):
     code = request.session.get("last_order")
     if not code:
         return redirect("track")
-    return render(request, "store/order_done.html", {"code": code})
+    return render(request, "store/order_done.html", {"code": code, "order": Order.objects.filter(code=code).first()})
 
 
 @never_cache

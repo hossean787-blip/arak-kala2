@@ -121,6 +121,8 @@ def product_json(product, *, manager=False):
 def order_json(order, *, manager=False):
     data = {
         "id": order.pk, "code": order.code, "total": order.total,
+        "subtotal": order.subtotal, "discount": order.discount, "shipping_fee": order.shipping_fee,
+        "coupon_code": order.coupon_code, "shipping_name": order.shipping_name,
         "status": order.status, "status_label": order.get_status_display(),
         "created_at": int(order.created_at.timestamp()),
     }
@@ -219,8 +221,12 @@ def customer_orders(request):
         token = UUID(str(data.get("token")))
     except ValueError:
         raise ApiError(400, "شناسه ثبت سفارش معتبر نیست.") from None
+    shipping_id=data.get("shipping_id")
+    coupon_code=data.get("coupon_code","")
+    if (shipping_id is not None and (type(shipping_id) is not int or not 0<shipping_id<2**63)) or not isinstance(coupon_code,str) or len(coupon_code)>32:
+        raise ApiError(400,"اطلاعات قیمت معتبر نیست.")
     try:
-        order = place_order(token, details["customer"], details["phone"], details["address"], items, customer)
+        order = place_order(token, details["customer"], details["phone"], details["address"], items, customer, coupon_code=coupon_code.strip().upper(),shipping_id=shipping_id)
     except ValidationError as exc:
         raise ApiError(409, exc.messages[0]) from None
     if dict(order.lines.values_list("product_id", "quantity")) != dict(items):
