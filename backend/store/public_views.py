@@ -13,6 +13,7 @@ from django.views.decorators.http import require_POST
 from .forms import SavedAddressForm
 from .models import Customer, Product, SavedAddress
 
+@never_cache
 @ensure_csrf_cookie
 def home(request):
     products = Product.objects.filter(active=True)

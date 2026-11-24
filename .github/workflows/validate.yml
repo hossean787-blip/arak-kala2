@@ -33,6 +33,7 @@ jobs:
       - run: python manage.py test store --verbosity 2
       - run: python manage.py collectstatic --noinput
       - run: node --check store/static/storefront/app.js
+      - run: node --check store/static/storefront/pages.js
       - run: node --check store/static/store/main.js
   android-admin:
     runs-on: ubuntu-24.04
