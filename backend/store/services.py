@@ -8,6 +8,7 @@ from django.db import transaction
 from django.db.models import F
 
 from .models import MAX_STOCK, Order, OrderLine, Product, Sale, SaleLine, StockMovement
+from .pricing import quote
 
 
 @transaction.atomic
@@ -84,7 +85,7 @@ def reserve_product(product_id, quantity):
 
 
 @transaction.atomic
-def place_order(token, customer, phone, address, cart, account=None):
+def place_order(token, customer, phone, address, cart, account=None, *, coupon_code='', shipping_id=None, expected_quote=None):
     if not cart or any(type(pid) is not int or pid < 1 or type(qty) is not int
                        or not 1 <= qty <= MAX_STOCK for pid, qty in cart.items()):
         raise ValidationError("سبد خرید معتبر نیست.")
@@ -97,6 +98,8 @@ def place_order(token, customer, phone, address, cart, account=None):
             raise ValidationError("این فرم قبلاً ثبت شده است. لطفاً سفارش جدیدی شروع کنید.")
         if dict(order.lines.values_list("product_id", "quantity")) != dict(cart):
             raise ValidationError("این شناسه قبلاً برای سبد دیگری استفاده شده است.")
+        if (order.coupon_code, order.shipping_method_id)!=(coupon_code,shipping_id):
+            raise ValidationError("این شناسه قبلاً برای سفارش دیگری استفاده شده است.")
         return order
 
     lines = []
@@ -107,10 +110,16 @@ def place_order(token, customer, phone, address, cart, account=None):
                                quantity=quantity, unit_price=product.actual_price))
         movements.append(StockMovement(product=product, order=order,
                                        delta=-quantity, reason="سفارش اینترنتی"))
+    priced=quote(cart,coupon_code,shipping_id,locked=True,lines=lines)
+    if expected_quote is not None and priced!=expected_quote:
+        raise ValidationError("مبلغ سفارش تغییر کرده است؛ خلاصه جدید را بررسی کنید.")
     OrderLine.objects.bulk_create(lines)
     StockMovement.objects.bulk_create(movements)
-    order.total = sum(line.total for line in lines)
-    order.save(update_fields=["total"])
+    for field in ("subtotal","discount","shipping_fee","coupon_code","shipping_name","total"):
+        setattr(order,field,priced[field])
+    order.coupon_id=priced["coupon_id"]
+    order.shipping_method_id=priced["shipping_id"]
+    order.save(update_fields=["subtotal","discount","shipping_fee","coupon_code","shipping_name","total","coupon","shipping_method"])
     return order
 
 
