@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="{% static 'store/main.css' %}">
   <script defer src="{% static 'store/main.js' %}"></script>
 </head>
-<body>
+<body class="manager-shell">
 <header class="site-header">
   <div class="wrap header-inner">
     <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true"></span>اراک کالا</a>
@@ -24,6 +24,7 @@
     </nav>
   </div>
 </header>
+{% if user.is_authenticated and not user.customer %}<div class="wrap manager-nav"><nav aria-label="پنل مدیریت"><a href="{% url 'dashboard' %}">داشبورد</a><a href="{% url 'products' %}">کالاها</a><a href="{% url 'inventory' %}">گردش موجودی</a><a href="{% url 'orders' %}">سفارش‌ها</a><a href="{% url 'pos' %}">فروش حضوری</a><a href="{% url 'sale_list' %}">فاکتورها</a><a href="{% url 'manager_reports' %}">گزارش‌ها</a></nav></div>{% endif %}
 <main class="wrap">
   {% for message in messages %}<p class="notice {{ message.tags }}" role="status">{{ message }}</p>{% endfor %}
   {% block body %}{% endblock %}

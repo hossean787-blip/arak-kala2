@@ -1,11 +1,1 @@
-{% extends 'store/base.html' %}
-{% block title %}مدیریت | اراک کالا{% endblock %}
-{% block body %}
-<h1>مدیریت فروشگاه</h1>
-<div class="grid">
-  <a class="panel metric" href="{% url 'products' %}"><span>کالای فعال</span><strong>{{ active_count }}</strong></a>
-  <a class="panel metric" href="{% url 'orders' %}"><span>سفارش در جریان</span><strong>{{ open_orders }}</strong></a>
-  <a class="panel metric" href="{% url 'sale_list' %}"><span>فروش حضوری امروز</span><strong>{{ today_sales }} فاکتور</strong><span>{{ today_total }} ریال</span></a>
-</div>
-<div class="actions"><a class="button" href="{% url 'pos' %}">ثبت فروش حضوری</a><a class="button light" href="{% url 'product_new' %}">افزودن کالا</a></div>
-{% endblock %}
+{% extends 'store/base.html' %}{% block title %}مدیریت | اراک کالا{% endblock %}{% block body %}<div class="manager-heading"><span>ARAK KALA / CONTROL CENTER</span><h1>مدیریت فروشگاه</h1><p>وضعیت واقعی کالا و سفارش‌ها در یک نگاه</p></div><div class="grid manager-metrics"><a class="panel metric" href="{% url 'products' %}"><span>کالای فعال</span><strong>{{ active_count }}</strong></a><a class="panel metric" href="{% url 'products' %}?status=low"><span>کم‌موجودی</span><strong>{{ low_stock }}</strong></a><a class="panel metric" href="{% url 'products' %}?status=empty"><span>ناموجود</span><strong>{{ out_stock }}</strong></a><a class="panel metric" href="{% url 'orders' %}?status=new"><span>سفارش جدید</span><strong>{{ new_orders }}</strong></a><a class="panel metric" href="{% url 'orders' %}"><span>سفارش در جریان</span><strong>{{ open_orders }}</strong></a><a class="panel metric" href="{% url 'sale_list' %}"><span>فروش حضوری امروز</span><strong>{{ today_total }} ریال</strong><span>{{ today_sales }} فاکتور</span></a></div><div class="actions"><a class="button" href="{% url 'product_new' %}">افزودن کالا</a><a class="button light" href="{% url 'pos' %}">ثبت فروش حضوری</a><a class="button light" href="{% url 'manager_reports' %}">گزارش فروش</a></div><section class="panel"><h2>آخرین سفارش‌ها</h2>{% for order in recent_orders %}<p><a href="{% url 'order_detail' order.pk %}">سفارش {{ order.pk }}</a> · {{ order.get_status_display }} · {{ order.total }} ریال</p>{% empty %}<p>سفارشی ثبت نشده است.</p>{% endfor %}</section>{% endblock %}

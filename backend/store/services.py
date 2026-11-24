@@ -23,6 +23,20 @@ def increase_stock(product, quantity, reason):
 
 
 @transaction.atomic
+def adjust_stock(product_id, expected, desired, reason):
+    if type(expected) is not int or type(desired) is not int or not 0<=expected<=MAX_STOCK or not 0<=desired<=MAX_STOCK:
+        raise ValidationError("موجودی معتبر نیست.")
+    product=Product.objects.select_for_update().get(pk=product_id)
+    if product.stock!=expected:
+        raise ValidationError("موجودی تغییر کرده است؛ صفحه را تازه کنید.")
+    if desired!=expected:
+        product.stock=desired
+        product.save(update_fields=["stock"])
+        StockMovement.objects.create(product=product,delta=desired-expected,reason=reason)
+    return product
+
+
+@transaction.atomic
 def record_sale(token, customer, selected):
     quantities = Counter()
     for product_id, quantity in selected:

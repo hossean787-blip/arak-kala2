@@ -28,6 +28,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .forms import CheckoutForm, CustomerLoginForm, CustomerRegistrationForm, ManagerAuthenticationForm, ProductForm
 from .models import MAX_STOCK, Customer, ManagerToken, Order, Product, StockMovement
+from .media_service import store_product_image, ImageUploadError
 from .services import place_order, update_order
 from .views import create_customer, is_manager
 
@@ -326,18 +327,11 @@ def manager_image(request):
         raise ApiError(413, "حجم تصویر حداکثر ۲ مگابایت است.")
     try:
         raw = base64.b64decode(encoded, validate=True)
-        if len(raw) > MAX_IMAGE_BYTES:
-            raise ApiError(413, "حجم تصویر حداکثر ۲ مگابایت است.")
-        with Image.open(BytesIO(raw)) as source:
-            if source.format != IMAGE_FORMATS[mime] or source.width * source.height > 16_000_000:
-                raise ApiError(400, "فرمت یا ابعاد تصویر معتبر نیست.")
-            image = ImageOps.exif_transpose(source).convert("RGB")
-            image.thumbnail((1600, 1600))
-            output = BytesIO()
-            image.save(output, "JPEG", quality=86)
-    except (ValueError, UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        name = store_product_image(raw, mime)
+    except ImageUploadError as exc:
+        raise ApiError(exc.status, str(exc)) from None
+    except ValueError:
         raise ApiError(400, "محتوای تصویر معتبر نیست.") from None
-    name = default_storage.save(f"products/{uuid4().hex}.jpg", ContentFile(output.getvalue()))
     return JsonResponse({"url": default_storage.url(name)}, status=201)
 
 

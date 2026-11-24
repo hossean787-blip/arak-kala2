@@ -1,6 +1,6 @@
 {% extends 'store/base.html' %}
 {% block body %}
-<h1>سفارش‌های اینترنتی</h1>
+<h1>سفارش‌های اینترنتی</h1><form class="panel filter" method="get"><label>جست‌وجو<input name="q" value="{{ q }}" placeholder="کد پیگیری، نام، موبایل"></label><label>وضعیت<select name="status"><option value="">همه</option>{% for value,label in statuses %}<option value="{{ value }}"{% if selected == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><button>نمایش</button></form>
 <div class="panel table-wrap"><table><thead><tr><th>سفارش</th><th>خریدار</th><th>وضعیت</th><th>جمع به ریال</th></tr></thead>
 <tbody>{% for order in page %}<tr><td><a href="{% url 'order_detail' order.pk %}">{{ order.pk }}</a></td><td>{{ order.customer }}</td><td>{{ order.get_status_display }}</td><td>{{ order.total }}</td></tr>
 {% empty %}<tr><td colspan="4">سفارشی ثبت نشده است.</td></tr>{% endfor %}</tbody></table></div>

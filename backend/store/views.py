@@ -20,7 +20,7 @@ from django.views.decorators.http import require_POST
 from .forms import (CartLineForm, CheckoutForm, CustomerLoginForm, CustomerRegistrationForm,
                     LineForm, ManagerAuthenticationForm, ProductForm, SaleForm, SaleLineFormSet,
                     StockForm, TrackingForm)
-from .models import Customer, Order, Product, Sale, SavedAddress, MAX_UNIT_PRICE
+from .models import Customer, Order, Product, Sale, SavedAddress, MAX_UNIT_PRICE, StockMovement
 from .favorites import favorite_ids
 from .services import NEXT_STATUS, increase_stock, place_order, record_sale, update_order
 
@@ -251,6 +251,10 @@ def dashboard(request):
     sales = Sale.objects.filter(created_at__date=timezone.localdate())
     return render(request, "store/dashboard.html", {
         "active_count": Product.objects.filter(active=True).count(),
+        "low_stock": Product.objects.filter(active=True,stock__gt=0,stock__lt=5).count(),
+        "out_stock": Product.objects.filter(active=True,stock=0).count(),
+        "new_orders": Order.objects.filter(status=Order.Status.NEW).count(),
+        "recent_orders": Order.objects.all()[:6],
         "open_orders": Order.objects.filter(status__in=[Order.Status.NEW, Order.Status.CONFIRMED]).count(),
         "today_sales": sales.count(), "today_total": sales.aggregate(total=Sum("total"))["total"] or 0,
     })
@@ -258,13 +262,20 @@ def dashboard(request):
 
 @manager_only
 def products(request):
-    query = request.GET.get("q", "").strip()[:100]
-    products = Product.objects.all()
+    query=request.GET.get("q","").strip()[:100]
+    selected=request.GET.get("status","")
+    category=request.GET.get("category","").strip()[:80]
+    products=Product.objects.all()
+    categories=products.exclude(category="").order_by("category").values_list("category",flat=True).distinct()
     if query:
-        products = products.filter(Q(name__icontains=query) | Q(sku__icontains=query)
-                                   | Q(barcode__iexact=query))
-    page = Paginator(products, 30).get_page(request.GET.get("page"))
-    return render(request, "store/products.html", {"page": page, "q": query})
+        products=products.filter(Q(name__icontains=query)|Q(sku__icontains=query)|Q(barcode__iexact=query))
+    if category: products=products.filter(category=category)
+    if selected=="active": products=products.filter(active=True)
+    elif selected=="inactive": products=products.filter(active=False)
+    elif selected=="low": products=products.filter(active=True,stock__gt=0,stock__lt=5)
+    elif selected=="empty": products=products.filter(active=True,stock=0)
+    page=Paginator(products,30).get_page(request.GET.get("page"))
+    return render(request,"store/products.html",{"page":page,"q":query,"selected":selected,"category":category,"categories":categories})
 
 
 @manager_only
@@ -347,9 +358,12 @@ def receipt(request, pk):
 
 @manager_only
 def orders(request):
-    return render(request, "store/orders.html", {
-        "page": Paginator(Order.objects.all(), 30).get_page(request.GET.get("page")),
-    })
+    queryset=Order.objects.all()
+    q=request.GET.get("q","").strip()[:100]
+    selected=request.GET.get("status","")
+    if q: queryset=queryset.filter(Q(code__icontains=q)|Q(customer__icontains=q)|Q(phone__icontains=q))
+    if selected in Order.Status.values: queryset=queryset.filter(status=selected)
+    return render(request,"store/orders.html",{"page":Paginator(queryset,30).get_page(request.GET.get("page")),"q":q,"selected":selected,"statuses":Order.Status.choices})
 
 
 @manager_only
