@@ -20,7 +20,8 @@ from django.views.decorators.http import require_POST
 from .forms import (CartLineForm, CheckoutForm, CustomerLoginForm, CustomerRegistrationForm,
                     LineForm, ManagerAuthenticationForm, ProductForm, SaleForm, SaleLineFormSet,
                     StockForm, TrackingForm)
-from .models import Customer, Order, Product, Sale, SavedAddress
+from .models import Customer, Order, Product, Sale, SavedAddress, MAX_UNIT_PRICE
+from .favorites import favorite_ids
 from .services import NEXT_STATUS, increase_stock, place_order, record_sale, update_order
 
 
@@ -98,31 +99,57 @@ def home(request):
     return render(request, "store/home.html")
 
 
+@never_cache
 def catalog(request):
-    products = Product.objects.filter(active=True)
-    search = request.GET.get("q", "").strip()[:100]
-    category = request.GET.get("category", "").strip()[:80]
-    sort = request.GET.get("sort", "")
-    categories = products.exclude(category="").order_by("category").values_list(
-        "category", flat=True
-    ).distinct()
+    products=Product.objects.filter(active=True)
+    search=request.GET.get("q","").strip()[:100]
+    category=request.GET.get("category","").strip()[:80]
+    sort=request.GET.get("sort","")
+    categories=products.exclude(category="").order_by("category").values_list("category",flat=True).distinct()
     if search:
-        products = products.filter(Q(name__icontains=search) | Q(sku__icontains=search)
-                                   | Q(barcode__iexact=search) | Q(description__icontains=search))
+        for term in search.split()[:8]:
+            products=products.filter(Q(name__icontains=term)|Q(sku__icontains=term)|Q(barcode__iexact=term)|Q(description__icontains=term))
     if category:
-        products = products.filter(category=category)
-    if sort in {"price", "-price"}:
-        products = products.annotate(effective=Coalesce("discount_price", "price"))
-        products = products.order_by("-effective" if sort == "-price" else "effective", "pk")
-    page = Paginator(products, 24).get_page(request.GET.get("page"))
-    return render(request, "store/catalog.html", {
-        "page": page, "search_page": request.resolver_match.url_name == "search", "categories": categories, "selected": category, "q": search, "sort": sort,
-    })
+        products=products.filter(category=category)
+    products=products.annotate(effective=Coalesce("discount_price","price"))
+    bounds={}
+    errors=[]
+    for key in ("min_price","max_price"):
+        raw=request.GET.get(key,"").strip()[:32]
+        if raw:
+            try:
+                bounds[key]=forms.IntegerField(min_value=0,max_value=MAX_UNIT_PRICE).clean(raw)
+            except ValidationError:
+                errors.append("بازه قیمت باید عدد صحیح و معتبر به ریال باشد.")
+    if bounds.get("min_price",0)>bounds.get("max_price",MAX_UNIT_PRICE):
+        errors.append("حداقل قیمت نباید بیشتر از حداکثر قیمت باشد.")
+    if not errors:
+        if "min_price" in bounds: products=products.filter(effective__gte=bounds["min_price"])
+        if "max_price" in bounds: products=products.filter(effective__lte=bounds["max_price"])
+    available=request.GET.get("available")=="1"
+    discounted=request.GET.get("discounted")=="1"
+    if available: products=products.filter(stock__gt=0)
+    if discounted: products=products.filter(discount_price__isnull=False)
+    ordering={"price":("effective","pk"),"-price":("-effective","pk"),"newest":("-pk",),"name":("name","pk")}
+    products=products.order_by(*ordering.get(sort,ordering["name"]))
+    page=Paginator(products,24).get_page(request.GET.get("page"))
+    return render(request,"store/catalog.html",{"page":page,"search_page":request.resolver_match.url_name=="search","categories":categories,"selected":category,"q":search,"sort":sort,"available":available,"discounted":discounted,"min_price":request.GET.get("min_price","")[:32],"max_price":request.GET.get("max_price","")[:32],"filter_errors":errors,"favorite_ids":favorite_ids(request)})
 
 
-def product_detail(request, pk):
-    product = get_object_or_404(Product, pk=pk, active=True)
-    return render(request, "store/product_detail.html", {"product": product, "favorite": product.pk in request.session.get("favorites", [])})
+@never_cache
+def product_detail(request,pk):
+    product=get_object_or_404(Product,pk=pk,active=True)
+    related=Product.objects.filter(active=True,stock__gt=0).exclude(pk=pk)
+    if product.category:
+        related=related.filter(category=product.category)
+    else:
+        related=related.none()
+    ids=favorite_ids(request)
+    recent_ids=[i for i in request.session.get("recent_products",[]) if type(i) is int and 0<i<2**63 and i!=pk][:8]
+    found=Product.objects.filter(active=True).in_bulk(recent_ids)
+    recent=[found[i] for i in recent_ids if i in found][:4]
+    request.session["recent_products"]=[pk]+recent_ids[:7]
+    return render(request,"store/product_detail.html",{"product":product,"favorite":pk in ids,"favorite_ids":ids,"related":related.order_by("-pk")[:4],"recent":recent,"canonical":request.build_absolute_uri(reverse("public_product",args=[pk]))})
 
 
 @require_POST

@@ -1,0 +1,2 @@
+# Catalog phase
+Effective-price range and sorting, stock and sale filters, newest by registration ID, multi-term name/SKU/description search, real related products from the same category, session recent views, durable account favorites with guest migration, product canonical metadata and public sitemap/robots. No fabricated reviews, fake popularity or product data. Sitemap is capped at 49,000 products pending large-catalog indexing. Favorites not synchronized for anonymous visitors. All code remains on the feature branch until validation.

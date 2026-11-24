@@ -12,12 +12,13 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from .forms import SavedAddressForm
 from .models import Customer, Product, SavedAddress
+from .favorites import favorite_ids, set_favorite
 
 @never_cache
 @ensure_csrf_cookie
 def home(request):
     products = Product.objects.filter(active=True)
-    return render(request, "store/public_home.html", {"products": products[:8]})
+    return render(request, "store/public_home.html", {"products": products.order_by("-pk")[:8], "discounts": products.filter(stock__gt=0,discount_price__isnull=False).order_by("-pk")[:4], "favorite_ids":favorite_ids(request)})
 
 def categories(request):
     from django.db.models import Count
@@ -26,20 +27,23 @@ def categories(request):
 
 @never_cache
 def favorites(request):
-    return render(request, "store/favorites.html", {"products": Product.objects.filter(active=True, pk__in=request.session.get("favorites", []))})
+    ids=favorite_ids(request)
+    return render(request,"store/favorites.html",{"products":Product.objects.filter(active=True,pk__in=ids),"favorite_ids":ids})
 
 @require_POST
-def toggle_favorite(request, pk):
-    get_object_or_404(Product, pk=pk, active=True)
-    values = list(request.session.get("favorites", []))
-    if pk in values:
-        values.remove(pk)
-    elif len(values) < 100:
-        values.append(pk)
-    else:
-        messages.error(request, "حداکثر ۱۰۰ محصول در علاقه‌مندی‌ها.")
-    request.session["favorites"] = values
-    return redirect("favorites" if request.POST.get("source") == "favorites" else "public_product", **({} if request.POST.get("source") == "favorites" else {"pk":pk}))
+@never_cache
+def toggle_favorite(request,pk):
+    product=get_object_or_404(Product,pk=pk,active=True)
+    action=request.POST.get("action","")
+    desired={"add":True,"remove":False}.get(action)
+    if not set_favorite(request,product,desired):
+        messages.error(request,"حداکثر ۱۰۰ محصول در علاقه‌مندی‌ها.")
+    source=request.POST.get("source")
+    if source=="favorites":
+        return redirect("favorites")
+    if source=="catalog":
+        return redirect("public_catalog")
+    return redirect("public_product",pk=pk)
 
 def get_customer(request):
     if not request.user.is_authenticated:
@@ -114,3 +118,18 @@ def information(request, section):
     if section not in titles:
         raise Http404
     return render(request, "store/information.html", {"section":section,"title":titles[section]})
+
+def robots(request):
+    from django.http import HttpResponse
+    content="User-agent: *\nDisallow: /manager/\nDisallow: /api/\nDisallow: /pos/\nDisallow: /account/\nDisallow: /cart/\nDisallow: /checkout/\nDisallow: /favorites/\nDisallow: /login/\nDisallow: /register/\nDisallow: /shop/\nDisallow: /search/\nSitemap: "+request.build_absolute_uri(reverse("sitemap"))+"\n"
+    return HttpResponse(content,content_type="text/plain; charset=utf-8")
+
+def sitemap(request):
+    from django.http import HttpResponse
+    from xml.etree.ElementTree import Element, SubElement, tostring
+    root=Element("urlset",xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
+    paths=[reverse(name) for name in ("home","public_catalog","categories","about","contact","terms","privacy")]
+    paths.extend(reverse("public_product",args=[pk]) for pk in Product.objects.filter(active=True).order_by("pk").values_list("pk",flat=True)[:49000])
+    for path in paths:
+        SubElement(SubElement(root,"url"),"loc").text=request.build_absolute_uri(path)
+    return HttpResponse(tostring(root,encoding="utf-8",xml_declaration=True),content_type="application/xml; charset=utf-8")
