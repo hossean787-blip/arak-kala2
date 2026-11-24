@@ -23,6 +23,10 @@ RULES = {
     "/login/": ("customer_login", 30),
     "/register/": ("register", 15),
     "/tracking/": ("track", 30),
+    "/account/profile/": ("profile", 15),
+    "/account/password/": ("password_change", 10),
+    "/account/recovery-email/": ("email_verify", 5),
+    "/password/forgot/": ("password_reset", 5),
 }
 WINDOW = 300
 
@@ -43,6 +47,10 @@ class AuthThrottleMiddleware:
 
     def __call__(self, request):
         rule = RULES.get(request.path_info)
+        if request.path_info.startswith("/password/reset/"):
+            rule = ("password_confirm", 10)
+        elif request.path_info.startswith("/account/recovery-email/confirm/"):
+            rule = ("email_confirm", 10)
         if request.method != "POST" or rule is None:
             return self.get_response(request)
         bucket, limit = rule

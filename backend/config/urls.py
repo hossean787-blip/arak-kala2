@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth.views import LogoutView
 from django.urls import path
-from store import api, views, public_views
+from store import api, views, public_views, account_views
 
 urlpatterns = [
     path("", public_views.home, name="home"),
@@ -26,6 +26,15 @@ urlpatterns = [
     path("register/", views.customer_register, name="public_register"),
     path("register/", views.customer_register, name="customer_register"),
     path("account/", public_views.account, name="account"),
+    path("account/profile/", account_views.profile, name="profile"),
+    path("account/password/", account_views.change_password, name="change_password"),
+    path("account/recovery-email/", account_views.recovery_email, name="recovery_email"),
+    path("account/recovery-email/confirm/<str:token>/", account_views.verify_email, name="verify_email"),
+    path("password/forgot/", account_views.forgot_password, name="forgot_password"),
+    path("password/sent/", account_views.reset_sent, name="reset_sent"),
+    path("password/reset/<uidb64>/<token>/", account_views.CustomerResetConfirm.as_view(), name="reset_confirm"),
+    path("password/complete/", account_views.reset_complete, name="reset_complete"),
+    path("account/orders/<int:pk>/", account_views.order_detail, name="customer_order_detail"),
     path("account/orders/", views.customer_orders, name="public_orders"),
     path("account/orders/", views.customer_orders, name="customer_orders"),
     path("account/addresses/", public_views.addresses, name="addresses"),
