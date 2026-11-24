@@ -10,7 +10,9 @@ SECRET_KEY = os.getenv("ARAK_SECRET_KEY") or (
 ALLOWED_HOSTS = [host.strip() for host in os.getenv(
     "ARAK_ALLOWED_HOSTS", "localhost,127.0.0.1,10.0.2.2" if DEBUG else ""
 ).split(",") if host.strip()]
-if not DEBUG and (len(SECRET_KEY) < 50 or not ALLOWED_HOSTS):
+if not DEBUG and (len(SECRET_KEY) < 50 or len(set(SECRET_KEY)) < 5
+                  or SECRET_KEY.startswith(("insecure-", "REPLACE_WITH_", "django-insecure-"))
+                  or not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS):
     raise ImproperlyConfigured("Set ARAK_SECRET_KEY and ARAK_ALLOWED_HOSTS for deployment.")
 
 STORE_NAME = "اراک کالا"
@@ -26,6 +28,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "store.security.AuthThrottleMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -72,3 +75,10 @@ SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_REFERRER_POLICY = "same-origin"
 if os.getenv("ARAK_TRUST_LOCAL_PROXY") == "1":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Proxy headers are deliberately ignored for rate limiting unless the gateway
+# is explicitly trusted and overwrites X-Real-IP (never append client input).
+ARAK_TRUST_REAL_IP = os.getenv("ARAK_TRUST_REAL_IP") == "1"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+SESSION_COOKIE_HTTPONLY = True

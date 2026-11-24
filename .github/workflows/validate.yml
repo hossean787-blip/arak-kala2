@@ -18,6 +18,8 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -40,6 +42,8 @@ jobs:
         working-directory: android-admin
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -57,3 +61,49 @@ jobs:
           name: arak-kala-admin-debug
           path: android-admin/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+  security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Audit Python dependencies
+        run: |
+          python -m pip install pip-audit
+          python -m pip_audit --strict --requirement backend/requirements.txt
+      - name: Verify deployment settings
+        working-directory: backend
+        run: |
+          python -m pip install -r requirements.txt
+          export ARAK_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
+          export ARAK_ALLOWED_HOSTS=shop.example.invalid
+          python manage.py check --deploy --fail-level ERROR
+      - name: Install checksum-verified Gitleaks
+        run: |
+          curl -fLsS --retry 3 https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz -o /tmp/gitleaks.tar.gz
+          echo 'a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  /tmp/gitleaks.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+      - name: Scan complete reachable Arak Kala Git history
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          git rev-list --all > "$work/revisions"
+          echo "Reachable commits: $(wc -l < "$work/revisions")"
+          failed=0
+          while IFS= read -r rev; do
+            mkdir "$work/snapshot"
+            git archive "$rev" -- . ':(exclude)archives/sepas' | tar -xf - -C "$work/snapshot"
+            echo "Scanning revision $rev (separate Sepas archive excluded)"
+            if ! /tmp/gitleaks dir --redact=100 --no-banner --max-archive-depth 2 --max-target-megabytes 30 "$work/snapshot"; then
+              failed=1
+            fi
+            rm -rf "$work/snapshot"
+          done < "$work/revisions"
+          exit "$failed"
