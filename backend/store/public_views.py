@@ -121,7 +121,7 @@ def information(request, section):
 
 def robots(request):
     from django.http import HttpResponse
-    content="User-agent: *\nDisallow: /manager/\nDisallow: /api/\nDisallow: /pos/\nDisallow: /account/\nDisallow: /cart/\nDisallow: /checkout/\nDisallow: /favorites/\nDisallow: /login/\nDisallow: /register/\nDisallow: /shop/\nDisallow: /search/\nSitemap: "+request.build_absolute_uri(reverse("sitemap"))+"\n"
+    content="User-agent: *\nDisallow: /manager/\nDisallow: /api/\nDisallow: /pos/\nDisallow: /account/\nDisallow: /cart/\nDisallow: /checkout/\nDisallow: /favorites/\nDisallow: /login/\nDisallow: /register/\nDisallow: /password/\nDisallow: /shop/\nDisallow: /search/\nSitemap: "+request.build_absolute_uri(reverse("sitemap"))+"\n"
     return HttpResponse(content,content_type="text/plain; charset=utf-8")
 
 def sitemap(request):
