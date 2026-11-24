@@ -185,7 +185,7 @@ jobs:
           # Fixture-only full project backup: actual deployed DB, media and tracked source.
           sudo mkdir -p /tmp/arak-ci-backups
           sudo chmod 700 /tmp/arak-ci-backups
-          sudo bash ./backup-daily.sh /tmp/arak-ci-backups
+          sudo env ARAK_HTTP_PORT=8080 ARAK_HTTPS_PORT=8443 bash ./backup-daily.sh /tmp/arak-ci-backups
           test "$(sudo find /tmp/arak-ci-backups -name '*.complete' | wc -l)" = 1
           sudo find /tmp/arak-ci-backups -name SHA256SUMS -execdir sha256sum -c SHA256SUMS \;
           curl --cacert /tmp/arak-test-ca.crt -fSs --retry 10 --retry-all-errors https://localhost:8443/api/ready
