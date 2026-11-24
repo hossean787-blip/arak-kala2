@@ -1,0 +1,7 @@
+/deploy/.env
+/deploy/.env.*
+!/deploy/.env.example
+/backups/
+*.jks
+*.keystore
+*.p12

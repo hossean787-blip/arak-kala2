@@ -142,3 +142,47 @@ jobs:
           name: storefront-browser-preview
           path: backend/browser-artifacts/
           if-no-files-found: warn
+  deployment-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Backup and safe restore test
+        run: python backend/ops/test_backup.py
+      - name: Isolated container deployment over local TLS
+        working-directory: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          {
+            echo ARAK_SITE_ADDRESS=localhost
+            echo ARAK_ALLOWED_HOSTS=localhost
+            printf 'ARAK_SECRET_KEY=%s\n' "$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
+            echo ARAK_MAIL_ENABLED=0
+          } > .env
+          export ARAK_HTTP_PORT=8080 ARAK_HTTPS_PORT=8443
+          docker compose config --quiet
+          docker compose build app
+          docker compose run --rm app python manage.py migrate --noinput
+          docker compose run --rm app python manage.py collectstatic --noinput
+          docker compose up -d --wait
+          # Trust the fixture CA rather than disabling TLS validation.
+          docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt /tmp/arak-test-ca.crt
+          curl --cacert /tmp/arak-test-ca.crt -fSs --retry 10 --retry-all-errors https://localhost:8443/api/ready
+          curl --cacert /tmp/arak-test-ca.crt -fSs https://localhost:8443/ -o /tmp/arak-home.html
+          grep -q 'ARAK' /tmp/arak-home.html
+          curl --cacert /tmp/arak-test-ca.crt -fSs https://localhost:8443/static/storefront/pages.css -o /tmp/arak-pages.css
+          test -s /tmp/arak-pages.css
+          test "$(curl --cacert /tmp/arak-test-ca.crt -sS -o /dev/null -w '%{http_code}' https://localhost:8443/uploads/private.sqlite3)" = 404
+          docker compose exec -T app python manage.py shell -c 'from store.models import Product; Product.objects.create(sku="RELEASE-RACE-FIXTURE", name="Release acceptance fixture", price=1000, stock=1)'
+          python ../scripts/test_release_acceptance.py
+      - name: Tear down isolated CI containers
+        if: always()
+        working-directory: deploy
+        run: docker compose down -v
