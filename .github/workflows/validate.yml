@@ -1,7 +1,7 @@
 name: Arak Kala validation
 on:
   push:
-    branches: [main, 'stabilization/**']
+    branches: [main, 'stabilization/**', 'design/**']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -113,3 +113,30 @@ jobs:
             rm -rf "$work/snapshot"
           done < "$work/revisions"
           exit "$failed"
+  browser-storefront:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      ARAK_DEVELOPMENT: '1'
+      ARAK_DB_PATH: /tmp/arak-browser-test.sqlite3
+      ARAK_MEDIA_ROOT: /tmp/arak-browser-media
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt playwright
+      - run: python -m playwright install --with-deps chromium
+      - run: python manage.py migrate --noinput
+      - run: python ../scripts/test_storefront_browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storefront-browser-preview
+          path: backend/browser-artifacts/
+          if-no-files-found: warn

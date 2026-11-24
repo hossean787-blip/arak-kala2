@@ -26,30 +26,33 @@ function loadCart(){try{state.cart=JSON.parse(localStorage.getItem('arak_cart')|
     seen.add(i.id); return true;
   }).slice(0, 50);}catch{state.cart=[]}}
 function saveCart(){try{localStorage.setItem('arak_cart',JSON.stringify(state.cart))}catch{}renderCartCount()}
-function renderCartCount(){$('#cartCount').textContent=fa(state.cart.reduce((s,x)=>s+x.quantity,0))}
+function renderCartCount(){const count=state.cart.reduce((s,x)=>s+x.quantity,0);$('#cartCount').textContent=fa(count);$('#mobileCartCount').textContent=fa(count);$('#mobileCartCount').hidden=!count}
 async function loadProducts(){try{
    const d=await api('/products');state.products=d.products;state.catalogLoaded=true;renderCategories();renderProducts();
- }catch(e){toast(e.message);$('#emptyTitle').textContent='بارگذاری محصولات امکان‌پذیر نیست';$('#emptyText').textContent='ارتباط با سرور را بررسی کنید.';$('#emptyState').hidden=false;}}
+ }catch(e){toast(e.message);$('#emptyTitle').textContent='بارگذاری محصولات امکان‌پذیر نیست';$('#emptyText').textContent='ارتباط با سرور را بررسی کنید.';$('#emptyState').hidden=false;$('#productGrid').setAttribute('aria-busy','false');$('#resultCount').textContent='خطا در دریافت محصولات';}}
 function renderCategories(){
   const cats=[...new Set(state.products.map(p=>p.category).filter(Boolean))];
   if (!cats.includes(state.category)) state.category = '';
   const root=$('#categories');root.innerHTML='<button type="button" class="chip active" data-cat="">همه محصولات</button>'+
     cats.map(c=>`<button type="button" class="chip" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('');
-  root.querySelectorAll('[data-cat]').forEach(btn => btn.classList.toggle('active', btn.dataset.cat === state.category));
-  root.querySelectorAll('[data-cat]').forEach(btn=>btn.addEventListener('click',()=>{state.category=btn.dataset.cat;root.querySelectorAll('.chip').forEach(n=>n.classList.toggle('active',n===btn));renderProducts();}));
+  root.querySelectorAll('[data-cat]').forEach(btn => {const active=btn.dataset.cat===state.category;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));});
+  root.querySelectorAll('[data-cat]').forEach(btn=>btn.addEventListener('click',()=>{state.category=btn.dataset.cat;root.querySelectorAll('.chip').forEach(n=>{n.classList.toggle('active',n===btn);n.setAttribute('aria-pressed',String(n===btn));});renderProducts();}));
 }
-function picture(p,cl=''){return p.images?.length?`<img class="${cl}" src="${escapeHtml(p.images[0])}" alt="${escapeHtml(p.name)}" loading="lazy">`:`<div class="product-placeholder" aria-hidden="true">AK.</div>`}
+function picture(p,cl=''){return p.images?.length?`<img class="${cl}" src="${escapeHtml(p.images[0])}" alt="${escapeHtml(p.name)}" loading="lazy" decoding="async">`:'<span class="product-placeholder" aria-hidden="true">AK</span>'}
+function bindImageFallback(root){root.querySelectorAll('img').forEach(img=>{const fallback=()=>{const p=document.createElement('span');p.className='product-placeholder';p.setAttribute('aria-hidden','true');p.textContent='AK';img.replaceWith(p)};img.addEventListener('error',fallback,{once:true});if(img.complete&&!img.naturalWidth)fallback();});}
 function renderProducts(){
  const q=state.search.trim().toLocaleLowerCase('fa');
  const ps=state.products.filter(p=>(!state.category||state.category===p.category)&&(!q||p.name.toLocaleLowerCase('fa').includes(q)||p.description.toLocaleLowerCase('fa').includes(q)));
- $('#productGrid').innerHTML=ps.map(p=>`<article class="product-card"><div class="product-photo">${picture(p)}<button aria-label="نمایش ${escapeHtml(p.name)}" data-product="${p.id}">↗</button></div><div class="product-meta"><div class="product-category">${escapeHtml(p.category)}</div><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">${rial(p.price)}</div>${!p.stock?'<span class="out-of-stock">ناموجود</span>':''}</div></article>`).join('');
+ $('#productGrid').innerHTML=ps.map(p=>`<article class="product-card"><div class="product-photo"><button class="product-open" type="button" aria-label="نمایش ${escapeHtml(p.name)}" data-product="${p.id}">${picture(p)}<span class="stock-tag ${p.stock?'':'unavailable'}">${p.stock?'موجود':'ناموجود'}</span><span class="product-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 5 5 19M5 7v12h12"/></svg></span></button></div><div class="product-meta"><div class="product-category">${escapeHtml(p.category||'محصولات')}</div><div class="product-name">${escapeHtml(p.name)}</div><div class="product-price">${rial(p.price)}</div></div></article>`).join('');
+ $('#productGrid').setAttribute('aria-busy','false');$('#resultCount').textContent=`${fa(ps.length)} محصول`;bindImageFallback($('#productGrid'));
  $('#emptyTitle').textContent=state.products.length?'محصولی با این مشخصات پیدا نشد':'هنوز محصولی ثبت نشده';
  $('#emptyText').textContent=state.products.length?'جست‌وجو یا دسته‌بندی را تغییر دهید.':'پس از اضافه‌شدن محصولات، اینجا نمایش داده می‌شوند.';
  $('#emptyState').hidden=ps.length>0;
  $('#productGrid').querySelectorAll('[data-product]').forEach(btn=>btn.addEventListener('click',()=>viewProduct(Number(btn.dataset.product))));
 }
-function openOverlay(type){$('#overlay').hidden=false;const node=type==='drawer'?$('#drawer'):$('#modal');node.hidden=false;document.body.style.overflow='hidden'}
-function closeOverlay(){$('#overlay').hidden=true;$('#drawer').hidden=true;$('#modal').hidden=true;document.body.style.overflow=''}
+let returnFocus=null;
+function openOverlay(type){if($('#overlay').hidden)returnFocus=document.activeElement;$('#overlay').hidden=false;const node=type==='drawer'?$('#drawer'):$('#modal');$('#drawer').hidden=type!=='drawer';$('#modal').hidden=type!=='modal';node.hidden=false;document.body.style.overflow='hidden';node.querySelector('[data-close]')?.focus({preventScroll:true});}
+function closeOverlay(){const wasOpen=!$('#overlay').hidden;$('#overlay').hidden=true;$('#drawer').hidden=true;$('#modal').hidden=true;document.body.style.overflow='';if(wasOpen&&returnFocus?.isConnected)returnFocus.focus({preventScroll:true});returnFocus=null;}
 function cartTotal(){return state.cart.reduce((s,i)=>{const p=state.products.find(p=>p.id===i.id);return s+(p?p.price*i.quantity:0)},0)}
 function renderCart(){
   const node=$('#cartItems');
@@ -60,15 +63,18 @@ function renderCart(){
   }
   const filtered=state.cart.filter(i=>state.products.some(p=>p.id===i.id));
   if(filtered.length!==state.cart.length){state.cart=filtered;saveCart()}
-  node.innerHTML=state.cart.length?state.cart.map(i=>{const p=state.products.find(p=>p.id===i.id);return `<div class="cart-item"><div class="cart-thumb" style="display:grid;place-items:center">${picture(p,'cart-thumb')}</div><div><h4>${escapeHtml(p.name)}</h4><p>${rial(p.price)}</p><div class="qty-control"><button data-qty="${p.id}" data-delta="1">+</button><span>${fa(i.quantity)}</span><button data-qty="${p.id}" data-delta="-1">−</button></div></div></div>`}).join(''):'<div class="cart-empty">سبد خریدت فعلاً خالیه ♡</div>';
+  node.innerHTML=state.cart.length?state.cart.map(i=>{const p=state.products.find(p=>p.id===i.id);return `<div class="cart-item"><div class="cart-thumb" style="display:grid;place-items:center">${picture(p)}</div><div><h4>${escapeHtml(p.name)}</h4><p>${rial(p.price)}</p><div class="qty-control"><button data-qty="${p.id}" data-delta="1">+</button><span>${fa(i.quantity)}</span><button data-qty="${p.id}" data-delta="-1">−</button></div></div></div>`}).join(''):'<div class="cart-empty">سبد خریدت فعلاً خالیه ♡</div>';
   $('#cartTotal').textContent=rial(cartTotal());$('#checkoutBtn').disabled=!state.cart.length;
-  node.querySelectorAll('[data-qty]').forEach(b=>b.addEventListener('click',()=>changeQty(Number(b.dataset.qty),Number(b.dataset.delta))));
+  bindImageFallback(node);node.querySelectorAll('[data-qty]').forEach(b=>{b.setAttribute('aria-label',Number(b.dataset.delta)>0?'افزایش تعداد':'کاهش تعداد');b.addEventListener('click',()=>changeQty(Number(b.dataset.qty),Number(b.dataset.delta)));});
 }
 function changeQty(id,delta){let item=state.cart.find(x=>x.id===id);if(!item)return;const p=state.products.find(x=>x.id===id);item.quantity=Math.min(p.stock,1000,item.quantity+delta);if(item.quantity<1)state.cart=state.cart.filter(x=>x.id!==id);saveCart();renderCart()}
 function addToCart(id){const p=state.products.find(x=>x.id===id);if(!p||p.stock<1)return toast('این محصول فعلاً موجود نیست');const item=state.cart.find(x=>x.id===id);if(item){if(item.quantity>=Math.min(1000,p.stock))return toast('موجودی بیشتری ثبت نشده');item.quantity++}else { if (state.cart.length >= 50) return toast('حداکثر ۵۰ نوع کالا در هر سفارش'); state.cart.push({id,quantity:1}); }saveCart();closeOverlay();toast('محصول به سبد خرید اضافه شد')}
 function viewProduct(id){const p=state.products.find(x=>x.id===id);if(!p)return;
- $('#modalContent').innerHTML=`${p.images?.length?`<img class="modal-image" src="${escapeHtml(p.images[0])}" alt="${escapeHtml(p.name)}">`:`<div class="modal-image" style="display:grid;place-items:center;font:900 90px Arial;color:#ccc">AK.</div>`}<span class="label-sup">${escapeHtml(p.category)}</span><h2 id="modalTitle">${escapeHtml(p.name)}</h2><p>${escapeHtml(p.description||'')}</p><div class="totals"><b>${rial(p.price)}</b><span>${p.stock?`${fa(p.stock)} عدد موجود`:'ناموجود'}</span></div><button id="addProductBtn" class="btn btn-dark full" ${!p.stock?'disabled':''}>افزودن به سبد خرید +</button>`;
- $('#addProductBtn').addEventListener('click',()=>addToCart(id));openOverlay('modal')}
+ const images=Array.isArray(p.images)?p.images:[];
+ const thumbs=images.length>1?'<div class="gallery-thumbs" aria-label="تصاویر کالا">'+images.map((src,i)=>`<button type="button" class="gallery-thumb" data-image-index="${i}" aria-label="تصویر ${fa(i+1)}" aria-pressed="${i===0}"><img src="${escapeHtml(src)}" alt="" loading="lazy"></button>`).join('')+'</div>':'';
+ $('#modalContent').innerHTML=`<div class="gallery-main" id="galleryMain">${picture(p)}</div>${thumbs}<span class="label-sup">${escapeHtml(p.category||'محصولات')}</span><h2 id="modalTitle">${escapeHtml(p.name)}</h2><p>${escapeHtml(p.description||'')}</p><div class="totals"><b>${rial(p.price)}</b><span>${p.stock?`${fa(p.stock)} عدد موجود`:'ناموجود'}</span></div><button id="addProductBtn" class="btn btn-dark full" ${!p.stock?'disabled':''}>افزودن به سبد خرید +</button>`;
+ $('#modalContent').querySelectorAll('[data-image-index]').forEach(b=>b.addEventListener('click',()=>{const index=Number(b.dataset.imageIndex);$('#galleryMain').innerHTML=picture({...p,images:[images[index]]});bindImageFallback($('#galleryMain'));$('#modalContent').querySelectorAll('[data-image-index]').forEach(t=>t.setAttribute('aria-pressed',String(t===b)));}));
+ bindImageFallback($('#modalContent'));$('#addProductBtn').addEventListener('click',()=>addToCart(id));openOverlay('modal')}
 function formField(label,name,type='text',extra=''){return `<div class="field"><label for="f_${name}">${label}</label><input id="f_${name}" name="${name}" type="${type}" ${extra} required></div>`}
 function authModal(mode = 'login') {
   const register = mode === 'register';
@@ -173,5 +179,5 @@ $('#searchInput').addEventListener('input',e=>{state.search=e.target.value;rende
 $('#checkoutBtn').addEventListener('click',checkoutModal);
 $('#overlay').addEventListener('click',closeOverlay);
 document.querySelectorAll('[data-close]').forEach(x=>x.addEventListener('click',closeOverlay));
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeOverlay()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeOverlay();return}if(e.key!=='Tab'||$('#overlay').hidden)return;const active=$('#modal').hidden?$('#drawer'):$('#modal');const focusable=[...active.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled])')].filter(el=>el.getClientRects().length);if(!focusable.length)return;const first=focusable[0],last=focusable.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}});
 init();
