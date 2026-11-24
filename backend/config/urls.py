@@ -6,6 +6,8 @@ from store import api, views, public_views
 
 urlpatterns = [
     path("", public_views.home, name="home"),
+    path("robots.txt", public_views.robots, name="robots"),
+    path("sitemap.xml", public_views.sitemap, name="sitemap"),
     path("products/", views.catalog, name="public_catalog"),
     path("products/", views.catalog, name="catalog"),
     path("products/<int:pk>/", views.product_detail, name="public_product"),

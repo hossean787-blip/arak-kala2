@@ -136,3 +136,13 @@ class SavedAddress(models.Model):
 
     class Meta:
         ordering = ["pk"]
+
+
+class Favorite(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="favorites")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [models.UniqueConstraint(fields=["customer", "product"], name="unique_customer_favorite")]

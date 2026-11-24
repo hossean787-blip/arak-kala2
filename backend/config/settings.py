@@ -21,7 +21,7 @@ ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 INSTALLED_APPS = [
     "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions",
-    "django.contrib.messages", "django.contrib.staticfiles", "store",
+    "django.contrib.messages", "django.contrib.staticfiles", "store.apps.StoreConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
