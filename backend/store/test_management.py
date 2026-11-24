@@ -8,7 +8,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from PIL import Image
 from .models import Product, StockMovement
-from .management import image_version
+from .manager_views import image_version
 
 class ManagementTests(TestCase):
     def setUp(self):
