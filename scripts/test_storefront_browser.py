@@ -99,7 +99,7 @@ try:
             expect(page.locator(".address-row")).to_have_count(1)
             page.screenshot(path=out/f"addresses-{width}.png",full_page=True,animations="disabled")
             page.goto(base+"/checkout/")
-            page.get_by_role("link",name="خانه",exact=True).last.click()
+            page.locator(".form-panel").get_by_role("link",name="خانه",exact=True).click()
             expect(page.locator("textarea[name=address]")).to_have_value("نشانی آزمایشی مرورگر")
             page.screenshot(path=out/f"checkout-{width}.png",full_page=True,animations="disabled")
             page.get_by_role("button",name="ثبت سفارش آزمایشی").click()
