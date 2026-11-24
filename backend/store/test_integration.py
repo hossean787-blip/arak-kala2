@@ -125,3 +125,16 @@ class ShopIntegrationTests(TestCase):
         self.assertEqual(logged_in.status_code, 200, logged_in.content)
         self.assertEqual(self.web.get(f"/api/products/{product.pk}").json()["price"], 901)
         self.assertEqual(self.web.get(f"/api/products/{product.pk}").json()["images"], [])
+
+    def test_stock_update_requires_current_version(self):
+        token = self.manager_login()
+        product = Product.objects.create(sku="STAB-STOCK", name="Test", price=1000, stock=5)
+        path = f"/api/admin/products/{product.pk}"
+        for data in ({"stock": 9}, {"stock": 9, "expected_stock": 4}, {"stock": 9, "expected_stock": True}):
+            response = self.request(self.app, "PATCH", path, data, token)
+            self.assertEqual(response.status_code, 409, response.content)
+        response = self.request(self.app, "PATCH", path, {"stock": 9, "expected_stock": 5}, token)
+        self.assertEqual(response.status_code, 200, response.content)
+        product.refresh_from_db()
+        self.assertEqual(product.stock, 9)
+        self.assertEqual(StockMovement.objects.get(product=product).delta, 4)

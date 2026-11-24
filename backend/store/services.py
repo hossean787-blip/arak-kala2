@@ -12,6 +12,8 @@ from .models import MAX_STOCK, Order, OrderLine, Product, Sale, SaleLine, StockM
 
 @transaction.atomic
 def increase_stock(product, quantity, reason):
+    if type(quantity) is not int or not 1 <= quantity <= MAX_STOCK:
+        raise ValidationError("تعداد ورود موجودی معتبر نیست.")
     updated = Product.objects.filter(pk=product.pk, stock__lte=MAX_STOCK - quantity).update(
         stock=F("stock") + quantity
     )
@@ -53,6 +55,8 @@ def record_sale(token, customer, selected):
 
 
 def reserve_product(product_id, quantity):
+    if type(quantity) is not int or not 1 <= quantity <= MAX_STOCK:
+        raise ValidationError("تعداد کالا معتبر نیست.")
     try:
         product = Product.objects.select_for_update().get(pk=product_id, active=True)
     except Product.DoesNotExist as exc:
@@ -67,6 +71,9 @@ def reserve_product(product_id, quantity):
 
 @transaction.atomic
 def place_order(token, customer, phone, address, cart, account=None):
+    if not cart or any(type(pid) is not int or pid < 1 or type(qty) is not int
+                       or not 1 <= qty <= MAX_STOCK for pid, qty in cart.items()):
+        raise ValidationError("سبد خرید معتبر نیست.")
     order, created = Order.objects.get_or_create(token=token, defaults={
         "customer": customer, "phone": phone, "address": address,
         "account": account, "code": token_hex(10).upper(),
@@ -74,6 +81,8 @@ def place_order(token, customer, phone, address, cart, account=None):
     if not created:
         if (order.customer, order.phone, order.address, order.account) != (customer, phone, address, account):
             raise ValidationError("این فرم قبلاً ثبت شده است. لطفاً سفارش جدیدی شروع کنید.")
+        if dict(order.lines.values_list("product_id", "quantity")) != dict(cart):
+            raise ValidationError("این شناسه قبلاً برای سبد دیگری استفاده شده است.")
         return order
 
     lines = []
