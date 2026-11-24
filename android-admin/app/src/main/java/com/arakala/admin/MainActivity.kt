@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Ink, onPrimary = Color.White, background = Cream, surface = Color.White)) {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    AdminScreen(api, ::onImageBytes)
+                    AdminScreen(api, ::onImageBytes, this@MainActivity)
                 }
             }
         }
@@ -122,7 +122,7 @@ private class ShopApi {
 }
 
 @Composable
-private fun AdminScreen(api: ShopApi, imageBytes: (Uri) -> ByteArray) {
+private fun AdminScreen(api: ShopApi, imageBytes: (Uri) -> ByteArray, activity: MainActivity) {
     var isLoggedIn by remember { mutableStateOf(false) }
     var page by remember { mutableStateOf("dashboard") }
     var busy by remember { mutableStateOf(false) }
@@ -133,7 +133,6 @@ private fun AdminScreen(api: ShopApi, imageBytes: (Uri) -> ByteArray) {
     var editing by remember { mutableStateOf<JSONObject?>(null) }
 
     // All network calls are on worker threads. Compose state updates occur on the UI thread.
-    val activity = androidx.compose.ui.platform.LocalContext.current as MainActivity
     fun perform(task: () -> Unit, success: () -> Unit = {}) {
         if (busy) return
         busy = true; message = ""
