@@ -113,8 +113,16 @@ try:
             page.locator("input[name=recipient]").fill("گیرنده آزمایشی")
             page.locator("input[name=phone]").fill(phone)
             page.locator("textarea[name=address]").fill("نشانی آزمایشی مرورگر")
-            page.locator(".public-form button").click()
-            expect(page.locator(".address-row")).to_have_count(1)
+            with page.expect_navigation(wait_until="domcontentloaded") as navigation:
+                page.get_by_role("button",name="ذخیره نشانی",exact=True).click()
+            response=navigation.value
+            assert response and response.status==200, (page.url,response.status if response else None)
+            try:
+                expect(page.locator(".address-row")).to_have_count(1)
+            except AssertionError:
+                page.screenshot(path=out/f"address-failure-{width}.png",full_page=True)
+                print("Address page diagnostic:",page.url,page.locator("main").inner_text()[:1000],flush=True)
+                raise
             page.screenshot(path=out/f"addresses-{width}.png",full_page=True,animations="disabled")
             page.goto(base+"/checkout/")
             page.locator(".form-panel").get_by_role("link",name="خانه",exact=True).click()
