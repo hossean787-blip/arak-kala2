@@ -113,7 +113,7 @@ def product_json(product, *, manager=False):
         "images": [default_storage.url(name) for name in product.images],
     }
     if manager:
-        data.update(sku=product.sku, price=product.price, active=product.active,
+        data.update(sku=product.sku, barcode=product.barcode, price=product.price, active=product.active,
                     discount_price=product.discount_price)
     return data
 
@@ -308,6 +308,11 @@ def manager_products(request, pk=None):
             product = form.save(commit=False)
             product.stock = stock
             if "images" in data:
+                if pk is not None and "expected_images" in data:
+                    expected = data["expected_images"]
+                    current = [default_storage.url(name) for name in product.images]
+                    if not isinstance(expected,list) or expected!=current:
+                        raise ApiError(409,"تصاویر در این فاصله تغییر کرده‌اند؛ فهرست کالاها را تازه کنید.")
                 product.images = image_names(data["images"])
             product.save()
             if stock != previous_stock:

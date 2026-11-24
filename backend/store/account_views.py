@@ -229,4 +229,4 @@ def order_detail(request,pk):
     if customer is None:
         return redirect_to_login(request.path,reverse("public_login"))
     order=get_object_or_404(Order.objects.prefetch_related("lines"),pk=pk,account=customer)
-    return render(request,"store/customer_order_detail.html",{"order":order})
+    return render(request,"store/customer_order_detail.html",{"order":order,"sandbox_enabled":settings.ARAK_SANDBOX_PAYMENTS})

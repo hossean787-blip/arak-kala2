@@ -179,3 +179,29 @@ class Favorite(models.Model):
     class Meta:
         ordering = ["-created_at", "-pk"]
         constraints = [models.UniqueConstraint(fields=["customer", "product"], name="unique_customer_favorite")]
+
+
+class SandboxPayment(models.Model):
+    class State(models.TextChoices):
+        CREATING = "creating", "در حال ایجاد"
+        READY = "ready", "آماده آزمون"
+        VERIFIED = "verified", "آزمون تأیید شد؛ بدون پرداخت واقعی"
+        UNKNOWN = "unknown", "نامشخص؛ نیازمند بررسی"
+    order = models.OneToOneField(Order,on_delete=models.PROTECT,related_name="sandbox_payment")
+    amount = models.PositiveBigIntegerField()
+    authority = models.CharField(max_length=80,unique=True,null=True,blank=True)
+    reference = models.CharField(max_length=80,blank=True,default="")
+    state = models.CharField(max_length=12,choices=State,default=State.CREATING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    verified_at = models.DateTimeField(null=True,blank=True)
+
+
+class ReturnRequest(models.Model):
+    class State(models.TextChoices):
+        NEW = "new", "در انتظار بررسی"
+        REVIEWED = "reviewed", "بررسی شد؛ بدون تسویه یا مرجوعی خودکار"
+    order = models.OneToOneField(Order,on_delete=models.PROTECT,related_name="return_request")
+    reason = models.CharField(max_length=700)
+    state = models.CharField(max_length=12,choices=State,default=State.NEW)
+    manager_note = models.CharField(max_length=700,blank=True,default="")
+    created_at = models.DateTimeField(auto_now_add=True)

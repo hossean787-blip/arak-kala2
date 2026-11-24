@@ -76,3 +76,28 @@ class ManagementTests(TestCase):
         csrf=Client(enforce_csrf_checks=True)
         csrf.force_login(self.owner)
         self.assertEqual(csrf.post(reverse("manager_visibility",args=[self.product.pk]),{"active":"0"}).status_code,403)
+
+
+    def test_native_editor_expected_images_conflict(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        from hashlib import sha256
+        from secrets import token_urlsafe
+        from .models import ManagerToken
+        token=token_urlsafe(32)
+        ManagerToken.objects.create(account=self.owner,digest=sha256(token.encode()).hexdigest(),expires_at=timezone.now()+timedelta(minutes=5),auth_hash=self.owner.get_session_auth_hash())
+        image_route=reverse("manager_images",args=[self.product.pk])
+        self.client.post(image_route,{"action":"upload","version":image_version([]),"image":self.upload()})
+        self.product.refresh_from_db()
+        current=[settings.MEDIA_URL+self.product.images[0]]
+        path="/api/admin/products/"+str(self.product.pk)
+        native=Client(HTTP_AUTHORIZATION="Bearer "+token)
+        self.assertEqual(native.get(path).json()["barcode"],"")
+        stale=native.patch(path,{"images":[],"expected_images":[]},content_type="application/json")
+        self.assertEqual(stale.status_code,409)
+        self.product.refresh_from_db()
+        self.assertEqual(len(self.product.images),1)
+        success=native.patch(path,{"images":[],"expected_images":current},content_type="application/json")
+        self.assertEqual(success.status_code,200)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.images,[])
