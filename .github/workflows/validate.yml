@@ -1,0 +1,115 @@
+name: Arak Kala validation
+on:
+  push:
+    branches: [main, 'stabilization/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ARAK_DEVELOPMENT: '1'
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install -r requirements.txt
+      - run: python -m compileall -q config store
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py migrate --noinput
+      - run: python manage.py test store --verbosity 2
+      - run: python manage.py collectstatic --noinput
+      - run: node --check store/static/storefront/app.js
+      - run: node --check store/static/store/main.js
+  android-admin:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android-admin
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
+      - run: gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arak-kala-admin-debug
+          path: android-admin/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+  security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Audit Python dependencies
+        run: |
+          python -m pip install pip-audit
+          python -m pip_audit --strict --requirement backend/requirements.txt
+      - name: Verify deployment settings
+        working-directory: backend
+        run: |
+          python -m pip install -r requirements.txt
+          export ARAK_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
+          export ARAK_ALLOWED_HOSTS=shop.example.invalid
+          python manage.py check --deploy --fail-level ERROR
+      - name: Install checksum-verified Gitleaks
+        run: |
+          curl -fLsS --retry 3 https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz -o /tmp/gitleaks.tar.gz
+          echo 'a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  /tmp/gitleaks.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+      - name: Scan complete reachable Arak Kala Git history
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          git rev-list --all > "$work/revisions"
+          echo "Reachable commits: $(wc -l < "$work/revisions")"
+          failed=0
+          while IFS= read -r rev; do
+            mkdir "$work/snapshot"
+            git archive "$rev" -- . ':(exclude)archives/sepas' | tar -xf - -C "$work/snapshot"
+            echo "Scanning revision $rev (separate Sepas archive excluded)"
+            rm -f "$work/findings.json"
+            scan_status=0
+            /tmp/gitleaks dir --redact=100 --no-banner --max-archive-depth 2 --max-target-megabytes 30 --report-format json --report-path "$work/findings.json" "$work/snapshot" || scan_status=$?
+            if [ "$scan_status" -eq 1 ]; then
+              python scripts/triage_history_findings.py "$work/snapshot" "$work/findings.json" || failed=1
+            elif [ "$scan_status" -ne 0 ]; then
+              echo "Scanner error: $scan_status"
+              failed=1
+            fi
+            rm -rf "$work/snapshot"
+          done < "$work/revisions"
+          exit "$failed"

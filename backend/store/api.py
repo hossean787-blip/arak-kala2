@@ -291,7 +291,9 @@ def manager_products(request, pk=None):
             if pk is None and not form_data["sku"]:
                 form_data["sku"] = f"AK-{uuid4().hex.upper()}"
             previous_stock = product.stock
-            if "expected_stock" in data and data["expected_stock"] != previous_stock:
+            if pk is not None and "stock" in data and "expected_stock" not in data:
+                raise ApiError(409, "برای تغییر موجودی ابتدا فهرست کالاها را تازه کنید.")
+            if "expected_stock" in data and (type(data["expected_stock"]) is not int or data["expected_stock"] != previous_stock):
                 raise ApiError(409, "موجودی در این فاصله تغییر کرده است. فهرست کالاها را تازه کنید.")
             stock = validate(StockInput({"stock": data.get("stock", previous_stock)}))["stock"]
             form = ProductForm(form_data, instance=product)

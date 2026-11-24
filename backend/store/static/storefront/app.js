@@ -19,9 +19,13 @@ async function api(path, options={}) {
   return data;
 }
 function loadCart(){try{state.cart=JSON.parse(localStorage.getItem('arak_cart')||'[]');if (!Array.isArray(state.cart)) state.cart = [];
-  state.cart = state.cart.filter(i => Number.isSafeInteger(i?.id) && i.id > 0
-    && Number.isInteger(i.quantity) && i.quantity > 0 && i.quantity <= 1000).slice(0, 50);}catch{state.cart=[]}}
-function saveCart(){localStorage.setItem('arak_cart',JSON.stringify(state.cart));renderCartCount()}
+  const seen = new Set();
+  state.cart = state.cart.filter(i => {
+    if (!Number.isSafeInteger(i?.id) || i.id < 1 || !Number.isInteger(i.quantity)
+        || i.quantity < 1 || i.quantity > 1000 || seen.has(i.id)) return false;
+    seen.add(i.id); return true;
+  }).slice(0, 50);}catch{state.cart=[]}}
+function saveCart(){try{localStorage.setItem('arak_cart',JSON.stringify(state.cart))}catch{}renderCartCount()}
 function renderCartCount(){$('#cartCount').textContent=fa(state.cart.reduce((s,x)=>s+x.quantity,0))}
 async function loadProducts(){try{
    const d=await api('/products');state.products=d.products;state.catalogLoaded=true;renderCategories();renderProducts();
@@ -121,6 +125,7 @@ function checkoutModal(){if(!state.cart.length)return;if(!state.user)return auth
  $('#f_phone').value = state.user.phone;
  let previousPayload = '';
  let token;
+ const attemptKey = 'arak_order_attempt';
  $('#checkoutForm').onsubmit = async event => {
    event.preventDefault();
    const button = event.submitter;
@@ -129,12 +134,20 @@ function checkoutModal(){if(!state.cart.length)return;if(!state.user)return auth
    const items = state.cart.map(i => ({product_id: i.id, quantity: i.quantity}));
    const currentPayload = JSON.stringify({...form, items});
    try {
-     if (currentPayload !== previousPayload) {
-       token = crypto.randomUUID();
+     // Keep only a hash, not the delivery address or phone, in session storage.
+     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([state.user.phone, currentPayload])));
+     const fingerprint = Array.from(new Uint8Array(digest), n => n.toString(16).padStart(2,'0')).join('');
+     let attempt;
+     try { attempt = JSON.parse(sessionStorage.getItem(attemptKey) || 'null'); } catch {}
+     if (currentPayload !== previousPayload || !token) {
+       token = attempt?.fingerprint === fingerprint && /^[0-9a-f-]{36}$/i.test(attempt.token) ? attempt.token : crypto.randomUUID();
        previousPayload = currentPayload;
+       try { sessionStorage.setItem(attemptKey, JSON.stringify({fingerprint, token})); } catch {}
      }
      const result = await api('/orders', {method: 'POST', body: {...form, items, token}});
-     state.cart = [];
+     try { sessionStorage.removeItem(attemptKey); } catch {}
+     const purchased = new Map(items.map(i => [i.product_id, i.quantity]));
+     state.cart = state.cart.map(i => ({...i, quantity: i.quantity - (purchased.get(i.id) || 0)})).filter(i => i.quantity > 0);
      saveCart();
      await loadProducts();
      closeOverlay();

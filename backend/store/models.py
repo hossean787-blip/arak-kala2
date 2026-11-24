@@ -119,3 +119,9 @@ class ManagerToken(models.Model):
     account = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     expires_at = models.DateTimeField(db_index=True)
     auth_hash = models.CharField(max_length=64)
+
+
+class AuthThrottle(models.Model):
+    key = models.CharField(max_length=64, primary_key=True)
+    window = models.PositiveBigIntegerField(db_index=True)
+    count = models.PositiveIntegerField(default=0)
