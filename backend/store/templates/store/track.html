@@ -1,10 +1,1 @@
-{% extends 'store/base.html' %}
-{% block body %}
-<section class="panel narrow">
-  <h1>پیگیری سفارش</h1>
-  <form method="post" class="form-stack">
-    {% csrf_token %}{{ form.as_div }}<button>نمایش وضعیت</button>
-  </form>
-  {% if order %}<p class="notice">وضعیت سفارش <strong>{{ order.get_status_display }}</strong></p>{% endif %}
-</section>
-{% endblock %}
+{% extends 'store/public_base.html' %}{% block title %}پیگیری سفارش | اراک کالا{% endblock %}{% block body %}<section class="shell page-section"><div class="public-panel form-panel"><h1>پیگیری سفارش</h1><form method="post" class="public-form">{% csrf_token %}{{ form.as_div }}<button class="btn btn-dark full">نمایش وضعیت</button></form>{% if order %}<p class="public-notice">وضعیت سفارش: <strong>{{ order.get_status_display }}</strong></p>{% endif %}</div></section>{% endblock %}

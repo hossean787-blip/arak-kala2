@@ -1,0 +1,23 @@
+{% extends 'store/public_base.html' %}{% block body %}<section class="hero shell">
+ <div class="hero-copy">
+  <div class="eyebrow"><span class="star">✳</span> انتخاب‌های خاص برای آدم‌های خاص</div>
+  <h1>استایل خودتو<br> <span>از نو تعریف کن.</span></h1>
+  <p>از اولین نگاه تا آخرین انتخاب، خرید باید ساده، سریع و لذت‌بخش باشه. اراک کالا برای همین ساخته شده.</p>
+  <div class="hero-buttons"><a class="btn btn-dark" href="{% url 'public_catalog' %}">مشاهده محصولات <span aria-hidden="true">↖</span></a><span class="microcopy"><span class="micro-circle">✦</span> انتخاب با سلیقه، خرید با اطمینان</span></div>
+  <div class="hero-index"><span>ARAK KALA</span><span class="index-line"></span><span>EST. 2026</span></div>
+ </div>
+ <div class="hero-art" aria-label="طرح گرافیکی اختصاصی اراک کالا" role="img">
+  <div class="art-orbit art-orbit-one"></div><div class="art-orbit art-orbit-two"></div>
+  <div class="art-backdrop"></div>
+  <div class="art-tile art-tile-top"><span class="tiny-star">✦</span><span>new<br>collection</span></div>
+  <div class="art-main"><div class="art-shine"></div><div class="art-main-inner"><span>ARAK</span><span>KALA</span></div></div>
+  <div class="art-tile art-tile-bottom"><span>ARAK / KALA</span><span class="mini-arrow">↗</span></div>
+  <div class="art-capsule">YOU ARE THE STYLE</div>
+ </div>
+</section>
+<section class="features shell" aria-label="ویژگی‌های فروشگاه">
+ <div><span class="feature-icon">↗</span><span><strong>خرید بدون پیچیدگی</strong><small>مسیر کوتاه تا انتخاب شما</small></span></div>
+ <div><span class="feature-icon">✧</span><span><strong>محصولات منتخب</strong><small>انتخاب‌های دقیق و کاربردی</small></span></div>
+ <div><span class="feature-icon">◎</span><span><strong>پیگیری سفارش</strong><small>وضعیت خرید در حساب کاربری</small></span></div>
+</section>
+<section class="shell catalog"><div class="section-intro"><div><span class="label-sup">THE COLLECTION</span><h2>انتخاب‌های اراک کالا<span class="point">.</span></h2></div><a class="btn btn-dark" href="{% url 'public_catalog' %}">همه محصولات ↖</a></div><div class="product-grid">{% for product in products %}{% include 'store/public_card.html' %}{% empty %}<p>هنوز محصولی ثبت نشده است.</p>{% endfor %}</div></section><section class="statement shell"><span class="statement-number">/ 01</span><div><span class="statement-kicker">OUR PHILOSOPHY</span><h2>کمتر شلوغی.<br><em>بیشتر خودت.</em></h2><a class="btn btn-light" href="{% url 'about' %}">درباره اراک کالا</a></div><div class="statement-mark" aria-hidden="true">✳</div></section>{% endblock %}

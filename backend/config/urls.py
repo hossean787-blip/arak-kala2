@@ -2,10 +2,31 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth.views import LogoutView
 from django.urls import path
-from store import api, views
+from store import api, views, public_views
 
 urlpatterns = [
-    path("", api.storefront, name="home"),
+    path("", public_views.home, name="home"),
+    path("products/", views.catalog, name="public_catalog"),
+    path("products/<int:pk>/", views.product_detail, name="public_product"),
+    path("categories/", public_views.categories, name="categories"),
+    path("search/", views.catalog, name="search"),
+    path("favorites/", public_views.favorites, name="favorites"),
+    path("favorites/<int:pk>/toggle/", public_views.toggle_favorite, name="toggle_favorite"),
+    path("cart/", views.cart, name="public_cart"),
+    path("cart/import/", public_views.import_cart, name="import_cart"),
+    path("checkout/", views.checkout, name="public_checkout"),
+    path("login/", views.CustomerLogin.as_view(), name="public_login"),
+    path("register/", views.customer_register, name="public_register"),
+    path("account/", public_views.account, name="account"),
+    path("account/orders/", views.customer_orders, name="public_orders"),
+    path("account/addresses/", public_views.addresses, name="addresses"),
+    path("account/addresses/<int:pk>/", public_views.addresses, name="edit_address"),
+    path("account/addresses/<int:pk>/remove/", public_views.remove_address, name="remove_address"),
+    path("tracking/", views.track, name="public_track"),
+    path("about/", public_views.information, {"section":"about"}, name="about"),
+    path("contact/", public_views.information, {"section":"contact"}, name="contact"),
+    path("terms/", public_views.information, {"section":"terms"}, name="terms"),
+    path("privacy/", public_views.information, {"section":"privacy"}, name="privacy"),
     path("shop/home/", views.home, name="classic_home"),
     path("api/health", api.health),
     path("api/products", api.public_products),

@@ -1,8 +1,1 @@
-{% extends 'store/base.html' %}
-{% block body %}
-<h1>سفارش‌های من</h1>
-<div class="panel table-wrap"><table><thead><tr><th>کد پیگیری</th><th>وضعیت</th><th>جمع به ریال</th></tr></thead>
-<tbody>{% for order in page %}<tr><td><bdi>{{ order.code }}</bdi></td><td>{{ order.get_status_display }}</td><td>{{ order.total }}</td></tr>
-{% empty %}<tr><td colspan="3">سفارشی ثبت نشده است.</td></tr>{% endfor %}</tbody></table></div>
-{% include 'store/pagination.html' %}
-{% endblock %}
+{% extends 'store/public_base.html' %}{% block title %}سفارش‌های من | اراک کالا{% endblock %}{% block body %}<section class="shell page-section"><a href="{% url 'account' %}">حساب کاربری /</a><h1>سفارش‌های من</h1><div class="public-panel">{% for order in page %}<article class="public-order"><div><bdi>{{ order.code }}</bdi><p>{{ order.get_status_display }}</p></div><strong>{{ order.total }} ریال</strong></article>{% empty %}<p>سفارشی ثبت نشده است.</p>{% endfor %}</div>{% include 'store/pagination.html' %}</section>{% endblock %}
