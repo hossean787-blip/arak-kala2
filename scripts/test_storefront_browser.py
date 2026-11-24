@@ -58,6 +58,8 @@ try:
                 assert page.locator(".product-grid").evaluate("e=>getComputedStyle(e).gridTemplateColumns.split(' ').length")==2
                 expect(page.locator(".bottom-nav")).to_be_visible()
             else: expect(page.locator(".desktop-nav")).to_be_visible()
+            page.evaluate("window.scrollTo({top:0,behavior:\'instant\'})")
+            page.wait_for_function("window.scrollY === 0")
             page.screenshot(path=out/f"catalog-{width}.png",full_page=True,animations="disabled")
             page.locator("#searchInput").fill("عمودی")
             expect(page.locator(".product-card")).to_have_count(1)
