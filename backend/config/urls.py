@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth.views import LogoutView
 from django.urls import path
-from store import api, views, public_views, manager_views, account_views, pricing_views
+from store import api, views, public_views, manager_views, account_views, pricing_views, readiness
 
 urlpatterns = [
     path("", public_views.home, name="home"),
@@ -48,6 +48,7 @@ urlpatterns = [
     path("privacy/", public_views.information, {"section":"privacy"}, name="privacy"),
     path("shop/home/", views.home, name="classic_home"),
     path("api/health", api.health),
+    path("api/ready", readiness.ready),
     path("api/products", api.public_products),
     path("api/products/<int:pk>", api.public_products),
     path("api/auth/register", api.customer_register),

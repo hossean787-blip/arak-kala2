@@ -4,6 +4,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 val releaseApi = providers.gradleProperty("ARAK_API_BASE_URL").orElse("https://example.invalid/api").get()
+val debugApi = providers.gradleProperty("ARAK_DEBUG_API_BASE_URL").orElse("http://10.0.2.2:8000/api").get()
+require(debugApi == "http://10.0.2.2:8000/api" || Regex("https://[A-Za-z0-9.-]+(?::[0-9]+)?/api").matches(debugApi)) { "Debug physical device endpoint must be HTTPS" }
 require(Regex("https://[A-Za-z0-9.-]+(?::[0-9]+)?/api").matches(releaseApi)) {
     "ARAK_API_BASE_URL must be an HTTPS origin followed by /api"
 }
@@ -21,7 +23,7 @@ android {
     }
     buildTypes {
         getByName("debug") {
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000/api\"")
+            buildConfigField("String", "API_BASE_URL", "\"$debugApi\"")
         }
         getByName("release") {
             isMinifyEnabled = false
@@ -37,4 +39,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.activity:activity-compose:1.10.1")
+}
+
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.name in setOf("assembleRelease", "bundleRelease", "packageRelease") }) {
+        require(!releaseApi.contains("example.invalid")) { "Set the verified production HTTPS API origin before building a release." }
+    }
 }
